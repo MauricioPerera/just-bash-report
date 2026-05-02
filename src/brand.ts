@@ -57,36 +57,44 @@ export function parseBrandFile(content: string): BrandTokens {
 
   const yaml = fmMatch[1];
   const result: Record<string, unknown> = {};
-  let currentObj: Record<string, unknown> | null = null;
-  let currentKey = "";
+  // Support up to 3 levels: top → level1 → level2
+  let l1Obj: Record<string, unknown> | null = null;
+  let l2Obj: Record<string, unknown> | null = null;
 
   for (const line of yaml.split("\n")) {
-    const trimmed = line.trimEnd();
-    if (trimmed === "" || trimmed.startsWith("#")) continue;
+    const raw = line.trimEnd();
+    if (raw === "" || raw.trimStart().startsWith("#")) continue;
 
-    // Nested key (indented)
-    const nestedMatch = trimmed.match(/^  (\S+):\s*(.+)$/);
-    if (nestedMatch && currentObj) {
-      currentObj[nestedMatch[1]] = parseValue(nestedMatch[2]);
-      continue;
-    }
+    // Count leading spaces
+    const indent = raw.length - raw.trimStart().length;
+    const trimmed = raw.trimStart();
 
-    // Top-level key with value
-    const kvMatch = trimmed.match(/^(\S+):\s*(.+)$/);
-    if (kvMatch) {
-      currentObj = null;
-      const val = parseValue(kvMatch[2]);
-      result[kvMatch[1]] = val;
-      continue;
-    }
+    // Key: value
+    const kvMatch = trimmed.match(/^(\S+):\s+(.+)$/);
+    // Key: (object start)
+    const objMatch = !kvMatch ? trimmed.match(/^(\S+):\s*$/) : null;
 
-    // Top-level key without value (object start)
-    const objMatch = trimmed.match(/^(\S+):\s*$/);
-    if (objMatch) {
-      currentKey = objMatch[1];
-      currentObj = {};
-      result[currentKey] = currentObj;
-      continue;
+    if (indent === 0) {
+      l1Obj = null;
+      l2Obj = null;
+      if (kvMatch) {
+        result[kvMatch[1]] = parseValue(kvMatch[2]);
+      } else if (objMatch) {
+        l1Obj = {};
+        result[objMatch[1]] = l1Obj;
+      }
+    } else if (indent >= 2 && indent < 4 && l1Obj) {
+      l2Obj = null;
+      if (kvMatch) {
+        l1Obj[kvMatch[1]] = parseValue(kvMatch[2]);
+      } else if (objMatch) {
+        l2Obj = {};
+        l1Obj[objMatch[1]] = l2Obj;
+      }
+    } else if (indent >= 4 && l2Obj) {
+      if (kvMatch) {
+        l2Obj[kvMatch[1]] = parseValue(kvMatch[2]);
+      }
     }
   }
 

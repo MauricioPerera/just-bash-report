@@ -1,6 +1,7 @@
 /** Generates the self-contained HTML dashboard. */
 
 import { type BrandTokens, brandToCssVars } from "./brand.js";
+import { mdToHtml, escHtml } from "./md.js";
 
 export interface KpiSection {
   kind: "kpi";
@@ -48,48 +49,7 @@ const DEFAULT_PALETTE = [
   "#84cc16", "#e11d48", "#0ea5e9", "#a855f7", "#22c55e",
 ];
 
-function escHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-/** Simple markdown-ish to HTML: headers, bold, italic, lists, paragraphs */
-function mdToHtml(md: string): string {
-  const lines = md.split("\n");
-  let html = "";
-  let inList = false;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    if (trimmed.startsWith("### ")) {
-      if (inList) { html += "</ul>"; inList = false; }
-      html += `<h3 class="sec-h3">${escHtml(trimmed.slice(4))}</h3>`;
-    } else if (trimmed.startsWith("## ")) {
-      if (inList) { html += "</ul>"; inList = false; }
-      html += `<h2 class="sec-h2">${escHtml(trimmed.slice(3))}</h2>`;
-    } else if (trimmed.startsWith("# ")) {
-      if (inList) { html += "</ul>"; inList = false; }
-      html += `<h1 class="sec-h1">${escHtml(trimmed.slice(2))}</h1>`;
-    } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-      if (!inList) { html += "<ul>"; inList = true; }
-      html += `<li>${formatInline(trimmed.slice(2))}</li>`;
-    } else if (trimmed === "") {
-      if (inList) { html += "</ul>"; inList = false; }
-    } else {
-      if (inList) { html += "</ul>"; inList = false; }
-      html += `<p>${formatInline(trimmed)}</p>`;
-    }
-  }
-  if (inList) html += "</ul>";
-  return html;
-}
-
-function formatInline(s: string): string {
-  return escHtml(s)
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`(.+?)`/g, "<code>$1</code>");
-}
+// escHtml and mdToHtml imported from ./md.ts
 
 function renderKpis(kpis: KpiSection[], palette: string[]): string {
   return `<div class="kpi-grid">${kpis.map((k, i) => {
@@ -134,10 +94,13 @@ function renderChart(chart: ChartSection, idx: number, palette: string[]): strin
     },
   });
 
+  // Escape </ sequences to prevent closing the script tag from inside JSON
+  const safeConfig = config.replace(/<\//g, "<\\/");
+
   return `<div class="chart-container">
     <h3 class="chart-title">${escHtml(chart.title)}</h3>
     <div class="chart-wrapper"><canvas id="${id}"></canvas></div>
-    <script>new Chart(document.getElementById('${id}'),${config});</script>
+    <script>new Chart(document.getElementById('${id}'),${safeConfig});</script>
   </div>`;
 }
 

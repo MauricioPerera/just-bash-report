@@ -343,6 +343,17 @@ function buildReportCommand(): Command {
 
       if (!spec.title || !spec.sections) return fail(2, "json must have 'title' and 'sections'");
 
+      const validKinds = new Set(["kpi", "chart", "table", "text"]);
+      for (let i = 0; i < spec.sections.length; i++) {
+        const s = spec.sections[i];
+        if (!s || typeof s !== "object" || !("kind" in s)) {
+          return fail(2, `section[${i}]: must have 'kind' field`);
+        }
+        if (!validKinds.has((s as { kind: string }).kind)) {
+          return fail(2, `section[${i}]: unknown kind '${(s as { kind: string }).kind}' (valid: kpi, chart, table, text)`);
+        }
+      }
+
       current = { title: spec.title, subtitle: spec.subtitle, sections: spec.sections };
       return reportRender(ctx, fl);
     }

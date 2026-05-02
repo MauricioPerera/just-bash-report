@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reporte Financiero Q1 2026</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#f8fafc;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--accent:#6366f1;--success:#10b981;--danger:#ef4444;--radius:12px;--bg:#f1f5f9;--card:#ffffff;--text:#0f172a;--muted:#475569;--border:#cbd5e1;--accent:#0f172a;--success:#059669;--danger:#dc2626;--radius:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:1200px;margin:0 auto;padding:24px}
+.header{text-align:center;margin-bottom:32px;padding:32px 0;border-bottom:1px solid var(--border)}
+.header-logo{max-height:48px;margin-bottom:12px}
+.header h1{font-size:28px;font-weight:700;color:var(--text);margin-bottom:4px}
+.header .subtitle{font-size:16px;color:var(--muted)}
+.header .date{font-size:13px;color:var(--muted);margin-top:8px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.kpi-card{background:var(--card);border-radius:var(--radius);padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.kpi-value{font-size:32px;font-weight:700;color:var(--text)}
+.kpi-label{font-size:14px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:8px}
+.kpi-trend{font-size:13px;font-weight:600;padding:2px 8px;border-radius:12px;background:color-mix(in srgb,var(--success) 15%,white);color:var(--success)}
+.kpi-trend.trend-down{background:color-mix(in srgb,var(--danger) 15%,white);color:var(--danger)}
+.chart-container{background:var(--card);border-radius:var(--radius);padding:24px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.chart-title{font-size:16px;font-weight:600;margin-bottom:16px}
+.chart-wrapper{position:relative;height:300px}
+.table-section{background:var(--card);border-radius:var(--radius);margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow:hidden}
+.table-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)}
+.table-title{font-size:16px;font-weight:600}
+.table-search{padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;width:220px}
+.table-search:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,0.1)}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:12px 16px;font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{color:var(--text)}
+.sort-icon{font-size:11px;opacity:0.4}
+td{padding:12px 16px;font-size:14px;border-bottom:1px solid var(--border)}
+tr:hover td{background:#f8fafc}
+.table-footer{padding:12px 20px;font-size:13px;color:var(--muted);border-top:1px solid var(--border)}
+.text-section{background:var(--card);border-radius:var(--radius);padding:24px 32px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.text-section .sec-h1{font-size:22px;font-weight:700;margin:16px 0 8px}
+.text-section .sec-h2{font-size:18px;font-weight:600;margin:14px 0 6px}
+.text-section .sec-h3{font-size:15px;font-weight:600;margin:12px 0 4px}
+.text-section p{margin:8px 0;color:#334155}
+.text-section ul{margin:8px 0 8px 24px}
+.text-section li{margin:4px 0}
+.text-section code{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:13px}
+.text-section strong{color:var(--text)}
+.footer{text-align:center;padding:24px 0;font-size:12px;color:var(--muted);border-top:1px solid var(--border);margin-top:16px}
+@media print{body{background:#fff}.container{max-width:none;padding:0}.kpi-card,.chart-container,.table-section,.text-section{box-shadow:none;break-inside:avoid}}
+@media(max-width:640px){.kpi-grid{grid-template-columns:1fr 1fr}.container{padding:12px}.header h1{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <img src="https://img.logoipsum.com/245.svg" alt="Logo" class="header-logo">
+    <h1>Reporte Financiero Q1 2026</h1>
+    <div class="subtitle">NovaCorp S.A. de C.V.</div>
+    <div class="date">Generado: 2026-05-02 23:38:01</div>
+  </div>
+  <div class="kpi-grid"><div class="kpi-card" style="border-top:4px solid #0f172a">
+      <div class="kpi-value">96,000</div>
+      <div class="kpi-label">Ingresos Totales<span class="kpi-trend trend-up">+39%</span></div>
+    </div><div class="kpi-card" style="border-top:4px solid #1e40af">
+      <div class="kpi-value">53,000</div>
+      <div class="kpi-label">Gastos Totales<span class="kpi-trend trend-up">+0%</span></div>
+    </div><div class="kpi-card" style="border-top:4px solid #f59e0b">
+      <div class="kpi-value">43,000</div>
+      <div class="kpi-label">Utilidad Neta<span class="kpi-trend trend-up">+58%</span></div>
+    </div><div class="kpi-card" style="border-top:4px solid #059669">
+      <div class="kpi-value">58%</div>
+      <div class="kpi-label">Margen de Utilidad</div>
+    </div><div class="kpi-card" style="border-top:4px solid #dc2626">
+      <div class="kpi-value">13</div>
+      <div class="kpi-label">Transacciones</div>
+    </div><div class="kpi-card" style="border-top:4px solid #3b82f6">
+      <div class="kpi-value">5</div>
+      <div class="kpi-label">Categorías</div>
+    </div></div>
+  <div class="chart-container">
+    <h3 class="chart-title">Ingresos vs Gastos por Mes</h3>
+    <div class="chart-wrapper"><canvas id="chart_0"></canvas></div>
+    <script>new Chart(document.getElementById('chart_0'),{"type":"bar","data":{"labels":["Enero","Febrero","Marzo"],"datasets":[{"data":[170000,190000,236000],"backgroundColor":["#0f172a","#1e40af","#f59e0b"],"borderColor":["#0f172a","#1e40af","#f59e0b"],"borderWidth":1,"fill":false,"tension":0.3}]},"options":{"responsive":true,"maintainAspectRatio":false,"plugins":{"legend":{"display":false,"position":"bottom"},"title":{"display":false}},"scales":{"y":{"beginAtZero":true,"grid":{"color":"rgba(0,0,0,0.05)"}},"x":{"grid":{"display":false}}}}});</script>
+  </div>
+  <div class="chart-container">
+    <h3 class="chart-title">Tendencia de Gastos Mensuales</h3>
+    <div class="chart-wrapper"><canvas id="chart_1"></canvas></div>
+    <script>new Chart(document.getElementById('chart_1'),{"type":"line","data":{"labels":["Enero","Febrero","Marzo"],"datasets":[{"data":[83000,87000,83000],"backgroundColor":"#0f172a33","borderColor":"#0f172a","borderWidth":3,"fill":true,"tension":0.3}]},"options":{"responsive":true,"maintainAspectRatio":false,"plugins":{"legend":{"display":false,"position":"bottom"},"title":{"display":false}},"scales":{"y":{"beginAtZero":true,"grid":{"color":"rgba(0,0,0,0.05)"}},"x":{"grid":{"display":false}}}}});</script>
+  </div>
+  <div class="chart-container">
+    <h3 class="chart-title">Distribución por Categoría</h3>
+    <div class="chart-wrapper"><canvas id="chart_2"></canvas></div>
+    <script>new Chart(document.getElementById('chart_2'),{"type":"doughnut","data":{"labels":["Ventas","Marketing","Nómina","Servicios","Licencias"],"datasets":[{"data":[419000,55000,198000,145000,32000],"backgroundColor":["#0f172a","#1e40af","#f59e0b","#059669","#dc2626"],"borderColor":["#0f172a","#1e40af","#f59e0b","#059669","#dc2626"],"borderWidth":1,"fill":false,"tension":0.3}]},"options":{"responsive":true,"maintainAspectRatio":false,"plugins":{"legend":{"display":true,"position":"bottom"},"title":{"display":false}}}});</script>
+  </div>
+  <div class="text-section"><h2 class="sec-h2">Resumen Ejecutivo</h2><p>El primer trimestre de 2026 muestra un crecimiento sostenido con <strong>96,000</strong> en ingresos totales y un margen de utilidad del <strong>58%</strong>.</p><h3 class="sec-h3">Highlights</h3><ul><li><strong>Ventas</strong> creció un 25% de enero a marzo</li><li><strong>Marketing</strong> se redujo un 32% en gasto, señal de mayor eficiencia</li><li><strong>Licencias</strong> generó 2,000 adicionales en marzo — nuevo canal de ingresos</li></ul><h3 class="sec-h3">Riesgos</h3><ul><li>La nómina creció un 5% — monitorear headcount vs productividad</li><li>Concentración: Ventas representa el 70% de los ingresos</li></ul><h3 class="sec-h3">Recomendaciones</h3><ul><li>Escalar el canal de Licencias (potencial 00K+ anual)</li><li>Mantener el gasto de Marketing por debajo del 5% de ingresos</li><li>Planificar revisión salarial Q2 con base en performance</li></ul></div>
+  <div class="table-section">
+    <div class="table-header">
+      <h3 class="table-title">Detalle de Transacciones</h3>
+      <input type="text" class="table-search" placeholder="Buscar..." oninput="filterTable('table_l59dyy',this.value)">
+    </div>
+    <div class="table-scroll">
+      <table id="table_l59dyy">
+        <thead><tr><th onclick="sortTable('table_l59dyy',0)">month <span class="sort-icon">↕</span></th><th onclick="sortTable('table_l59dyy',1)">category <span class="sort-icon">↕</span></th><th onclick="sortTable('table_l59dyy',2)">type <span class="sort-icon">↕</span></th><th onclick="sortTable('table_l59dyy',3)">amount <span class="sort-icon">↕</span></th></tr></thead>
+        <tbody><tr><td>Enero</td><td>Ventas</td><td>ingreso</td><td>125000</td></tr><tr><td>Enero</td><td>Marketing</td><td>gasto</td><td>-18000</td></tr><tr><td>Enero</td><td>Nómina</td><td>gasto</td><td>-65000</td></tr><tr><td>Enero</td><td>Servicios</td><td>ingreso</td><td>45000</td></tr><tr><td>Febrero</td><td>Ventas</td><td>ingreso</td><td>138000</td></tr><tr><td>Febrero</td><td>Marketing</td><td>gasto</td><td>-22000</td></tr><tr><td>Febrero</td><td>Nómina</td><td>gasto</td><td>-65000</td></tr><tr><td>Febrero</td><td>Servicios</td><td>ingreso</td><td>52000</td></tr><tr><td>Marzo</td><td>Ventas</td><td>ingreso</td><td>156000</td></tr><tr><td>Marzo</td><td>Marketing</td><td>gasto</td><td>-15000</td></tr><tr><td>Marzo</td><td>Nómina</td><td>gasto</td><td>-68000</td></tr><tr><td>Marzo</td><td>Servicios</td><td>ingreso</td><td>48000</td></tr><tr><td>Marzo</td><td>Licencias</td><td>ingreso</td><td>32000</td></tr></tbody>
+      </table>
+    </div>
+    <div class="table-footer">13 registros</div>
+  </div>
+  <div class="footer">
+    Generado automáticamente por just-bash-report &middot; 2026-05-02 23:38:01
+  </div>
+</div>
+<script>
+function sortTable(id,col){
+  const t=document.getElementById(id),b=t.querySelector('tbody'),rows=Array.from(b.rows);
+  const dir=t.dataset.sortCol==col&&t.dataset.sortDir==='asc'?'desc':'asc';
+  t.dataset.sortCol=col;t.dataset.sortDir=dir;
+  rows.sort((a,b)=>{
+    let va=a.cells[col].textContent.trim(),vb=b.cells[col].textContent.trim();
+    const na=parseFloat(va),nb=parseFloat(vb);
+    if(!isNaN(na)&&!isNaN(nb))return dir==='asc'?na-nb:nb-na;
+    return dir==='asc'?va.localeCompare(vb):vb.localeCompare(va);
+  });
+  rows.forEach(r=>b.appendChild(r));
+}
+function filterTable(id,q){
+  const t=document.getElementById(id),rows=t.querySelectorAll('tbody tr');
+  const lq=q.toLowerCase();
+  rows.forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(lq)?'':'none'});
+}
+</script>
+</body>
+</html>

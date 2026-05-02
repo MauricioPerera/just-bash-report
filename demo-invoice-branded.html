@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Factura INV-2026-0042</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#fff;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--accent:#6366f1;--radius:8px;--bg:#f1f5f9;--card:#ffffff;--text:#0f172a;--muted:#475569;--border:#e2e8f0;--accent:#0f172a;--success:#059669;--danger:#dc2626;--radius:12px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--text);line-height:1.6;background:#f8fafc}
+.invoice{max-width:800px;margin:24px auto;background:var(--card);border-radius:var(--radius);box-shadow:0 1px 4px rgba(0,0,0,0.08);overflow:hidden}
+.inv-header{display:flex;justify-content:space-between;align-items:flex-start;padding:40px 40px 24px;border-bottom:3px solid var(--accent)}
+.inv-logo{max-height:56px}
+.inv-title-block{text-align:right}
+.inv-title{font-size:32px;font-weight:700;color:var(--accent);letter-spacing:-0.5px}
+.inv-number{font-size:14px;color:var(--muted);margin-top:4px}
+.inv-status{display:inline-block;padding:3px 12px;border-radius:12px;font-size:12px;font-weight:600;margin-top:8px;background:#dbeafe;color:#1d4ed8}
+.inv-parties{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding:24px 40px}
+.inv-party-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;margin-bottom:6px}
+.inv-party{font-size:14px;line-height:1.7}
+.inv-meta{padding:0 40px 16px;display:flex;gap:32px}
+.inv-meta-item{font-size:13px;color:var(--muted)}
+.inv-meta-item strong{color:var(--text)}
+.inv-table{padding:0 40px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 12px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);border-bottom:2px solid var(--border);background:#f8fafc}
+td{padding:10px 12px;font-size:14px;border-bottom:1px solid var(--border)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+th.num{text-align:right}
+.inv-totals{padding:16px 40px 24px;display:flex;justify-content:flex-end}
+.inv-totals-table{width:280px}
+.inv-totals-table tr td{padding:6px 0;font-size:14px;border:none}
+.inv-totals-table tr td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.inv-totals-table .total-row td{font-size:18px;font-weight:700;color:var(--accent);border-top:2px solid var(--accent);padding-top:10px}
+.inv-footer{padding:20px 40px 32px;border-top:1px solid var(--border)}
+.inv-footer-section{margin-bottom:12px}
+.inv-footer-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;margin-bottom:4px}
+.inv-footer-text{font-size:13px;color:#475569;white-space:pre-line}
+.inv-watermark{text-align:center;padding:12px;font-size:11px;color:var(--muted)}
+@media print{
+  body{background:#fff}
+  .invoice{box-shadow:none;margin:0;max-width:none}
+  .inv-watermark{display:none}
+}
+@media(max-width:640px){
+  .inv-header{flex-direction:column;gap:16px;padding:24px}
+  .inv-title-block{text-align:left}
+  .inv-parties{grid-template-columns:1fr;padding:16px 24px}
+  .inv-table,.inv-totals,.inv-footer,.inv-meta{padding-left:24px;padding-right:24px}
+}
+</style>
+</head>
+<body>
+<div class="invoice">
+  <div class="inv-header">
+    <div><img src="https://img.logoipsum.com/245.svg" alt="Logo" class="inv-logo"></div>
+    <div class="inv-title-block">
+      <div class="inv-title">FACTURA</div>
+      <div class="inv-number">INV-2026-0042</div>
+      <div class="inv-status">Enviada</div>
+    </div>
+  </div>
+
+  <div class="inv-parties">
+    <div>
+      <div class="inv-party-label">De</div>
+      <div class="inv-party"><strong>NovaCorp S.A. de C.V.</strong><br>Av. Revolución 1234, Col. Centro<br>Ciudad de México, CDMX 06000<br>RFC: NOV2201015A3<br>facturacion@novacorp.mx<br>+52 55 1234 5678</div>
+    </div>
+    <div>
+      <div class="inv-party-label">Para</div>
+      <div class="inv-party"><strong>Distribuidora del Pacífico S.A.</strong><br>Blvd. Marina 567, Zona Dorada<br>Mazatlán, Sinaloa 82110<br>RFC: DPA1905082B1<br>compras@distpacifico.mx</div>
+    </div>
+  </div>
+
+  <div class="inv-meta">
+    <div class="inv-meta-item"><strong>Fecha:</strong> 2026-05-02</div>
+    <div class="inv-meta-item"><strong>Vencimiento:</strong> 2026-06-01</div>
+  </div>
+
+  <div class="inv-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Descripción</th>
+          <th class="num">Cant.</th>
+          <th class="num">Precio Unit.</th>
+          <th class="num">IVA 16%</th>
+          <th class="num">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+    <tr>
+      <td>Consultoría estratégica — Mayo 2026</td>
+      <td class="num">40</td>
+      <td class="num">$1,500.00</td>
+      <td class="num">16%</td>
+      <td class="num">$60,000.00</td>
+    </tr>
+    <tr>
+      <td>Desarrollo de plataforma web (fase 2)</td>
+      <td class="num">1</td>
+      <td class="num">$85,000.00</td>
+      <td class="num">16%</td>
+      <td class="num">$85,000.00</td>
+    </tr>
+    <tr>
+      <td>Licencia SaaS Enterprise — anual</td>
+      <td class="num">1</td>
+      <td class="num">$24,000.00</td>
+      <td class="num">16%</td>
+      <td class="num">$24,000.00</td>
+    </tr>
+    <tr>
+      <td>Capacitación equipo técnico (3 sesiones)</td>
+      <td class="num">3</td>
+      <td class="num">$8,000.00</td>
+      <td class="num">16%</td>
+      <td class="num">$24,000.00</td>
+    </tr>
+    <tr>
+      <td>Hosting y mantenimiento mensual</td>
+      <td class="num">1</td>
+      <td class="num">$4,500.00</td>
+      <td class="num">16%</td>
+      <td class="num">$4,500.00</td>
+    </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="inv-totals">
+    <table class="inv-totals-table">
+      <tr><td>Subtotal</td><td>$197,500.00</td></tr>
+      <tr><td>IVA 16%</td><td>$31,600.00</td></tr>
+      <tr class="total-row"><td>Total</td><td>$229,100.00</td></tr>
+    </table>
+  </div>
+
+  <div class="inv-footer">
+    <div class="inv-footer-section"><div class="inv-footer-label">Información de Pago</div><div class="inv-footer-text">Banco: BBVA México
+Cuenta: 0123456789
+CLABE: 012180001234567893
+Referencia: INV-2026-0042</div></div>
+    <div class="inv-footer-section"><div class="inv-footer-label">Notas</div><div class="inv-footer-text">Factura válida como comprobante fiscal digital (CFDI).
+Tipo de pago: Transferencia bancaria.</div></div>
+  </div>
+
+  <div class="inv-watermark">Generado por just-bash-report</div>
+</div>
+</body>
+</html>

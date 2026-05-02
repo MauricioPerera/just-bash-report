@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+  <title>NovaCorp Blog</title>
+  <description>Insights de tecnología, finanzas y gestión empresarial</description>
+  <link>https://novacorp.github.io/blog</link>
+  <lastBuildDate>Sat, 02 May 2026 23:45:06 GMT</lastBuildDate>
+  <item>
+    <title>Tendencias de Recursos Humanos 2026</title>
+    <link>https://novacorp.github.io/blog/tendencias-de-recursos-humanos-2026.html</link>
+    <description>El futuro del trabajo  2026 marca un punto de inflexión en la gestión del talento. Las empresas que adapten sus prácticas de RRHH serán las que atraigan y retengan al mejor talento.     Top 5 tendencias      1. Trabajo híbrido inteligente Ya no es &quot;remoto vs oficina&quot;. Es encontrar el   mix óptimo</description>
+    <pubDate>Sat, 02 May 2026 00:00:00 GMT</pubDate>
+    <author>Patricia Morales</author>
+  </item>
+  <item>
+    <title>Guía práctica de presupuesto para PyMEs</title>
+    <link>https://novacorp.github.io/blog/gu-a-pr-ctica-de-presupuesto-para-pymes.html</link>
+    <description>Por qué presupuestar  Un presupuesto no es solo un documento financiero — es la   hoja de ruta   de tu negocio. Sin él, tomas decisiones a ciegas.     Los 5 pasos esenciales      1. Proyectar ingresos Analiza los últimos 12 meses y aplica un factor de crecimiento conservador (10-15% para PyMEs es</description>
+    <pubDate>Fri, 01 May 2026 00:00:00 GMT</pubDate>
+    <author>Carlos López</author>
+  </item>
+  <item>
+    <title>Cómo la IA está transformando la industria financiera</title>
+    <link>https://novacorp.github.io/blog/c-mo-la-ia-est-transformando-la-industria-financiera.html</link>
+    <description>Introducción  La inteligencia artificial está revolucionando la forma en que operan las instituciones financieras. Desde la detección de fraudes hasta la personalización de servicios, los algoritmos de machine learning están creando ventajas competitivas sin precedentes.     Detección de Fraudes</description>
+    <pubDate>Tue, 28 Apr 2026 00:00:00 GMT</pubDate>
+    <author>María Rodríguez</author>
+  </item>
+</channel>
+</rss>

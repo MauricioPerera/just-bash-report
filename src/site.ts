@@ -5,6 +5,7 @@
  */
 
 import { type BrandTokens, brandToCssVars } from "./brand.js";
+import { mdToHtml, escHtml } from "./md.js";
 
 export interface SitePost {
   _id: string;
@@ -29,38 +30,10 @@ export interface SiteConfig {
   brand?: BrandTokens;
 }
 
-function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
+// escHtml and mdToHtml imported from ./md.ts
 
 function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
-/** Markdown-ish to HTML */
-function md(text: string): string {
-  let html = esc(text);
-  // Headers
-  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-  // Bold, italic, code
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  html = html.replace(/`(.+?)`/g, '<code>$1</code>');
-  // Lists
-  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-  // Paragraphs (double newline)
-  html = html.replace(/\n\n/g, '</p><p>');
-  html = '<p>' + html + '</p>';
-  // Clean empty paragraphs
-  html = html.replace(/<p>\s*<\/p>/g, '');
-  html = html.replace(/<p>\s*(<h[1-3]>)/g, '$1');
-  html = html.replace(/(<\/h[1-3]>)\s*<\/p>/g, '$1');
-  html = html.replace(/<p>\s*(<ul>)/g, '$1');
-  html = html.replace(/(<\/ul>)\s*<\/p>/g, '$1');
-  return html;
 }
 
 function siteHead(title: string, brand?: BrandTokens): string {
@@ -88,7 +61,7 @@ function siteHead(title: string, brand?: BrandTokens): string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)}</title>
+<title>${escHtml(title)}</title>
 ${fontLink}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -130,12 +103,12 @@ article .post-body code{background:#f1f5f9;padding:2px 6px;border-radius:4px;fon
 
 function siteHeader(config: SiteConfig): string {
   const logoHtml = config.brand?.logo
-    ? `<img src="${esc(config.brand.logo)}" alt="Logo" class="site-logo"><br>`
+    ? `<img src="${escHtml(config.brand.logo)}" alt="Logo" class="site-logo"><br>`
     : "";
   return `<div class="site-header">
   ${logoHtml}
-  <div class="site-title">${esc(config.title)}</div>
-  ${config.description ? `<div class="site-desc">${esc(config.description)}</div>` : ""}
+  <div class="site-title">${escHtml(config.title)}</div>
+  ${config.description ? `<div class="site-desc">${escHtml(config.description)}</div>` : ""}
   <nav class="site-nav">
     <a href="index.html">Inicio</a>
     <a href="rss.xml">RSS</a>
@@ -149,17 +122,17 @@ export function generateIndex(posts: SitePost[], config: SiteConfig): string {
   const postCards = posts.map(post => {
     const slug = post.slug ?? slugify(post.Title);
     const excerpt = (post.Body ?? "").slice(0, 200).replace(/[#*`\n]/g, " ").trim();
-    const tags = (post.Tags ?? []).map(t => `<span class="tag">${esc(t)}</span>`).join("");
-    const catHtml = post.Category ? `<span class="category">${esc(post.Category)}</span>` : "";
+    const tags = (post.Tags ?? []).map(t => `<span class="tag">${escHtml(t)}</span>`).join("");
+    const catHtml = post.Category ? `<span class="category">${escHtml(post.Category)}</span>` : "";
 
     return `<div class="post-card">
-  <h2><a href="${slug}.html">${esc(post.Title)}</a></h2>
+  <h2><a href="${slug}.html">${escHtml(post.Title)}</a></h2>
   <div class="post-meta">
-    ${post.Author ? `<span>Por ${esc(post.Author)}</span>` : ""}
-    ${post.PublishedAt ? `<span>${esc(post.PublishedAt)}</span>` : ""}
+    ${post.Author ? `<span>Por ${escHtml(post.Author)}</span>` : ""}
+    ${post.PublishedAt ? `<span>${escHtml(post.PublishedAt)}</span>` : ""}
     ${catHtml}
   </div>
-  <div class="post-excerpt">${esc(excerpt)}${excerpt.length >= 200 ? "..." : ""}</div>
+  <div class="post-excerpt">${escHtml(excerpt)}${excerpt.length >= 200 ? "..." : ""}</div>
   ${tags ? `<div class="post-tags">${tags}</div>` : ""}
 </div>`;
   }).join("\n");
@@ -169,14 +142,14 @@ export function generateIndex(posts: SitePost[], config: SiteConfig): string {
 <div class="container">
   ${header}
   ${postCards}
-  <div class="footer">${esc(config.title)} &middot; Generado por just-bash-report</div>
+  <div class="footer">${escHtml(config.title)} &middot; Generado por just-bash-report</div>
 </div>
 </body>
 </html>`;
 }
 
 export function generatePostPage(post: SitePost, config: SiteConfig): string {
-  const tags = (post.Tags ?? []).map(t => `<span class="tag">${esc(t)}</span>`).join("");
+  const tags = (post.Tags ?? []).map(t => `<span class="tag">${escHtml(t)}</span>`).join("");
 
   return `${siteHead(`${post.Title} — ${config.title}`, config.brand)}
 <body>
@@ -184,16 +157,16 @@ export function generatePostPage(post: SitePost, config: SiteConfig): string {
   ${siteHeader(config)}
   <a href="index.html" class="back-link">&larr; Volver al inicio</a>
   <article>
-    <h1>${esc(post.Title)}</h1>
+    <h1>${escHtml(post.Title)}</h1>
     <div class="post-meta">
-      ${post.Author ? `<span>Por ${esc(post.Author)}</span>` : ""}
-      ${post.PublishedAt ? `<span>${esc(post.PublishedAt)}</span>` : ""}
-      ${post.Category ? `<span class="category">${esc(post.Category)}</span>` : ""}
+      ${post.Author ? `<span>Por ${escHtml(post.Author)}</span>` : ""}
+      ${post.PublishedAt ? `<span>${escHtml(post.PublishedAt)}</span>` : ""}
+      ${post.Category ? `<span class="category">${escHtml(post.Category)}</span>` : ""}
     </div>
     ${tags ? `<div class="post-tags" style="margin-bottom:24px">${tags}</div>` : ""}
-    <div class="post-body">${md(post.Body ?? "")}</div>
+    <div class="post-body">${mdToHtml(post.Body ?? "")}</div>
   </article>
-  <div class="footer">${esc(config.title)} &middot; Generado por just-bash-report</div>
+  <div class="footer">${escHtml(config.title)} &middot; Generado por just-bash-report</div>
 </div>
 </body>
 </html>`;
@@ -205,20 +178,20 @@ export function generateRss(posts: SitePost[], config: SiteConfig): string {
     const slug = post.slug ?? slugify(post.Title);
     const excerpt = (post.Body ?? "").slice(0, 300).replace(/[#*`\n]/g, " ").trim();
     return `  <item>
-    <title>${esc(post.Title)}</title>
-    <link>${esc(baseUrl)}/${slug}.html</link>
-    <description>${esc(excerpt)}</description>
+    <title>${escHtml(post.Title)}</title>
+    <link>${escHtml(baseUrl)}/${slug}.html</link>
+    <description>${escHtml(excerpt)}</description>
     ${post.PublishedAt ? `<pubDate>${new Date(post.PublishedAt).toUTCString()}</pubDate>` : ""}
-    ${post.Author ? `<author>${esc(post.Author)}</author>` : ""}
+    ${post.Author ? `<author>${escHtml(post.Author)}</author>` : ""}
   </item>`;
   }).join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
 <channel>
-  <title>${esc(config.title)}</title>
-  ${config.description ? `<description>${esc(config.description)}</description>` : ""}
-  <link>${esc(baseUrl)}</link>
+  <title>${escHtml(config.title)}</title>
+  ${config.description ? `<description>${escHtml(config.description)}</description>` : ""}
+  <link>${escHtml(baseUrl)}</link>
   <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
 ${items}
 </channel>
