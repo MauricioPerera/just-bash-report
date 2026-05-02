@@ -1,0 +1,58 @@
+{
+  "name": "just-bash-report",
+  "version": "1.0.0",
+  "description": "just-bash plugin: generate self-contained HTML dashboards and reports from agent data. Charts, KPIs, tables, and text — one file, opens in any browser.",
+  "license": "MIT",
+  "author": "Mauricio Perera",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MauricioPerera/just-bash-report.git"
+  },
+  "homepage": "https://github.com/MauricioPerera/just-bash-report#readme",
+  "bugs": {
+    "url": "https://github.com/MauricioPerera/just-bash-report/issues"
+  },
+  "keywords": [
+    "just-bash",
+    "report",
+    "dashboard",
+    "charts",
+    "html-report",
+    "agent-shell",
+    "llm-tools"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "just-bash-data": "^1.1.2"
+  },
+  "peerDependencies": {
+    "just-bash": ">=2.14.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "just-bash": "^2.14.4",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
