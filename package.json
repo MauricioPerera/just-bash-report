@@ -1,6 +1,6 @@
 {
   "name": "just-bash-report",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "just-bash plugin: generate self-contained HTML dashboards and reports from agent data. Charts, KPIs, tables, and text — one file, opens in any browser.",
   "license": "MIT",
   "author": "Mauricio Perera",
@@ -32,7 +32,9 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
