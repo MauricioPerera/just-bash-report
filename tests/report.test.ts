@@ -336,6 +336,110 @@ describe("edge cases", () => {
   });
 });
 
+// ── Issue #6: locale option (i18n) ───────────────────────
+
+describe("issue #6: locale (i18n)", () => {
+  it("default locale is 'es' (backwards compat)", async () => {
+    await run(`db users insert '{"name":"X"}'`);
+    await run(`report create "T"`);
+    await run(`report table users --title=People`);
+    await run(`report render --output=/o.html`);
+    const html = await bash.readFile("/o.html");
+    expect(html).toContain('<html lang="es">');
+    expect(html).toContain("Buscar...");
+    expect(html).toContain("Generado:");
+    expect(html).toContain("registros");
+  });
+
+  it("--locale=en switches strings on render", async () => {
+    await run(`db users insert '{"name":"X"}'`);
+    await run(`report create "T" --locale=en`);
+    await run(`report table users --title=People`);
+    await run(`report render --output=/o.html`);
+    const html = await bash.readFile("/o.html");
+    expect(html).toContain('<html lang="en">');
+    expect(html).toContain("Search...");
+    expect(html).toContain("Generated:");
+    expect(html).toMatch(/\d+ records</); // table footer text
+    expect(html).not.toContain("Buscar...");
+  });
+
+  it("createReportPlugin({ locale: 'en' }) sets default", async () => {
+    const enBash = new Bash({
+      fs: new InMemoryFs({}),
+      customCommands: createReportPlugin({ rootDir: "/data", locale: "en" }),
+    });
+    await enBash.exec(`report create "T"`);
+    await enBash.exec(`report kpi "Users" 10`);
+    await enBash.exec(`report render --output=/o.html`);
+    const html = await enBash.readFile("/o.html");
+    expect(html).toContain('<html lang="en">');
+    expect(html).toContain("Generated automatically");
+  });
+
+  it("--locale=en on report auto translates derived labels", async () => {
+    // Need >=5 docs with 2 unique categories to trigger pie heuristic (2 < 5*0.5)
+    await run(`db items insert '{"category":"A","amount":100}'`);
+    await run(`db items insert '{"category":"B","amount":200}'`);
+    await run(`db items insert '{"category":"A","amount":50}'`);
+    await run(`db items insert '{"category":"B","amount":75}'`);
+    await run(`db items insert '{"category":"A","amount":120}'`);
+    await run(`report auto items --output=/auto.html --locale=en`);
+    const html = await bash.readFile("/auto.html");
+    expect(html).toContain("Total Records");
+    expect(html).toContain("By category");
+    expect(html).toContain("amount (average)");
+    expect(html).toContain("amount (total)");
+    expect(html).not.toContain("Total Registros");
+    expect(html).not.toContain("Por category");
+  });
+
+  it("--locale=en on report invoice translates labels and status", async () => {
+    const r = await run(`report invoice '${JSON.stringify({
+      number: "INV-001", date: "2026-05-03",
+      from: { name: "Acme", taxId: "ABC123" },
+      to: { name: "Client" },
+      items: [{ description: "consulting", quantity: 1, unitPrice: 100 }],
+      status: "paid",
+    })}' --output=/inv.html --locale=en`);
+    expect(r.code).toBe(0);
+    const html = await bash.readFile("/inv.html");
+    expect(html).toContain("INVOICE");
+    expect(html).toContain(">From<");
+    expect(html).toContain(">To<");
+    expect(html).toContain("Date:");
+    expect(html).toContain(">Paid<");
+    expect(html).toContain("Tax ID: ABC123");
+    expect(html).not.toContain("FACTURA");
+    expect(html).not.toContain(">De<");
+    expect(html).not.toContain("Pagada");
+    expect(html).not.toContain("RFC: ABC123");
+  });
+
+  it("--locale=en on report site translates nav and back link", async () => {
+    await run(`db content insert '{"Title":"Hello","Body":"hi","Status":"Published"}'`);
+    await run(`report site content --output=/sen --locale=en --title="Blog"`);
+    const idx = await bash.readFile("/sen/index.html");
+    const post = await bash.readFile("/sen/hello.html");
+    expect(idx).toContain('<html lang="en">');
+    expect(idx).toContain(">Home<");
+    expect(post).toContain("Back to home");
+    expect(post).not.toContain("Volver al inicio");
+  });
+
+  it("invoice JSON 'locale' field beats --locale flag", async () => {
+    const r = await run(`report invoice '${JSON.stringify({
+      number: "X", date: "2026", from: { name: "A" }, to: { name: "B" },
+      items: [{ description: "x", quantity: 1, unitPrice: 1 }],
+      locale: "en",
+    })}' --output=/x.html --locale=es`);
+    expect(r.code).toBe(0);
+    const html = await bash.readFile("/x.html");
+    expect(html).toContain("INVOICE");
+    expect(html).not.toContain("FACTURA");
+  });
+});
+
 // ── Issue #5: deterministic table IDs ────────────────────
 
 describe("issue #5: deterministic table IDs", () => {

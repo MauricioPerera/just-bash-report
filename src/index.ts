@@ -5,12 +5,16 @@ import { generateHtml, type Section, type ReportData, type KpiSection, type Char
 import { parseBrandFile, type BrandTokens } from "./brand.js";
 import { generateInvoiceHtml, type InvoiceData, type InvoiceItem, type InvoiceParty } from "./invoice.js";
 import { generateIndex, generatePostPage, generateRss, type SitePost, type SiteConfig } from "./site.js";
+import { getStrings, type Locale } from "./i18n.js";
 
 // ── Public types ──────────────────────────────────────────
 
-export type { Section, ReportData, KpiSection, ChartSection, TableSection, TextSection, BrandTokens, InvoiceData, InvoiceItem, InvoiceParty, SitePost, SiteConfig };
+export type { Section, ReportData, KpiSection, ChartSection, TableSection, TextSection, BrandTokens, InvoiceData, InvoiceItem, InvoiceParty, SitePost, SiteConfig, Locale };
 
-export interface ReportOptions extends PluginOptions {}
+export interface ReportOptions extends PluginOptions {
+  /** Default locale for rendered output (default: "es"). Override per command with --locale. */
+  locale?: Locale;
+}
 
 // ── Helpers ───────────────────────────────────────────────
 
@@ -97,15 +101,21 @@ interface ReportState {
   sections: Section[];
   brand?: BrandTokens;
   offline?: boolean;
+  locale?: Locale;
 }
 
-function buildReportCommand(): Command {
+function buildReportCommand(defaultLocale?: Locale): Command {
   // Per-id report state. The default id is "default", so callers that don't
   // pass --id keep the original single-report-per-plugin behavior. Multiple
   // concurrent reports within one Bash instance can be built by passing
   // distinct --id values.
   const reports = new Map<string, ReportState>();
   const getId = (fl: Map<string, string>): string => fl.get("id") ?? "default";
+  const getLocale = (fl: Map<string, string>): Locale | undefined => {
+    const flag = fl.get("locale");
+    if (flag === "en" || flag === "es") return flag;
+    return defaultLocale;
+  };
 
   return defineCommand("report", async (args, ctx) => {
     const exec: Exec = (cmd: string) => {
@@ -161,9 +171,10 @@ function buildReportCommand(): Command {
       }
 
       const offline = fl.get("offline") === "true";
+      const locale = getLocale(fl);
       const id = getId(fl);
-      reports.set(id, { title, subtitle: fl.get("subtitle"), sections: [], brand, offline });
-      return ok(JSON.stringify({ created: true, title, brand: !!brand, offline, id }));
+      reports.set(id, { title, subtitle: fl.get("subtitle"), sections: [], brand, offline, locale });
+      return ok(JSON.stringify({ created: true, title, brand: !!brand, offline, id, locale }));
     }
 
     // ── KPI ───────────────────────────────────────────────
@@ -288,6 +299,7 @@ function buildReportCommand(): Command {
         brand: current.brand,
         logo: current.brand?.logo,
         offline: current.offline,
+        locale: current.locale,
       };
 
       const html = generateHtml(reportData);
@@ -330,11 +342,13 @@ function buildReportCommand(): Command {
       const docs = JSON.parse(docsR.stdout) as Array<Record<string, unknown>>;
 
       const id = getId(fl);
-      const current: ReportState = { title, sections: [], brand };
+      const locale = getLocale(fl);
+      const s = getStrings(locale);
+      const current: ReportState = { title, sections: [], brand, locale };
       reports.set(id, current);
 
       // KPI: total count
-      current.sections.push({ kind: "kpi", label: "Total Registros", value: docs.length });
+      current.sections.push({ kind: "kpi", label: s.totalRecords, value: docs.length });
 
       // Auto-detect fields
       if (docs.length > 0) {
@@ -352,7 +366,7 @@ function buildReportCommand(): Command {
             current.sections.push({
               kind: "chart",
               type: unique.length <= 6 ? "pie" : "bar",
-              title: `Por ${field}`,
+              title: s.byField(field),
               labels: Object.keys(counts),
               values: Object.values(counts),
             });
@@ -370,8 +384,8 @@ function buildReportCommand(): Command {
           if (nums.length < docs.length * 0.5) continue;
           const sum = nums.reduce((a, b) => a + b, 0);
           const avg = Math.round(sum / nums.length * 100) / 100;
-          current.sections.push({ kind: "kpi", label: `${field} (promedio)`, value: avg });
-          current.sections.push({ kind: "kpi", label: `${field} (total)`, value: sum });
+          current.sections.push({ kind: "kpi", label: s.fieldAvg(field), value: avg });
+          current.sections.push({ kind: "kpi", label: s.fieldTotal(field), value: sum });
         }
 
         // Find date fields → line chart (count by month)
@@ -388,7 +402,7 @@ function buildReportCommand(): Command {
             current.sections.push({
               kind: "chart",
               type: "line",
-              title: `${field} por mes`,
+              title: s.fieldByMonth(field),
               labels: sorted.map(([k]) => k),
               values: sorted.map(([, v]) => v),
             });
@@ -399,7 +413,7 @@ function buildReportCommand(): Command {
         const columns = fields.slice(0, 8); // cap at 8 columns for readability
         current.sections.push({
           kind: "table",
-          title: `Datos: ${collection}`,
+          title: s.collectionData(collection),
           columns,
           rows: docs,
         });
@@ -427,7 +441,7 @@ function buildReportCommand(): Command {
       }
 
       const id = getId(fl);
-      reports.set(id, { title: spec.title, subtitle: spec.subtitle, sections: spec.sections });
+      reports.set(id, { title: spec.title, subtitle: spec.subtitle, sections: spec.sections, locale: getLocale(fl) });
       return reportRender(ctx, fl);
     }
 
@@ -435,7 +449,8 @@ function buildReportCommand(): Command {
 
     async function reportSite(exec: Exec, pos: string[], fl: Map<string, string>): Promise<ExecResult> {
       const collection = pos[1] ?? "content";
-      const title = fl.get("title") ?? "Mi Sitio";
+      const locale = getLocale(fl);
+      const title = fl.get("title") ?? getStrings(locale).defaultSiteTitle;
       const description = fl.get("description");
       const baseUrl = fl.get("base-url") ?? "";
       const outputDir = fl.get("output") ?? "/site";
@@ -504,7 +519,7 @@ function buildReportCommand(): Command {
         );
       }
 
-      const config: SiteConfig = { title, description, baseUrl, brand };
+      const config: SiteConfig = { title, description, baseUrl, brand, locale };
 
       // Generate index
       const indexHtml = generateIndex(posts, config);
@@ -552,6 +567,9 @@ function buildReportCommand(): Command {
           data.brand = parseBrandFile(brandContent);
         } catch { /* use defaults */ }
       }
+
+      // Locale: explicit field on the JSON wins, else --locale flag, else plugin default
+      data.locale = data.locale ?? getLocale(fl);
 
       const html = generateInvoiceHtml(data);
       const output = fl.get("output") ?? `/invoices/${data.number}.html`;
@@ -610,5 +628,5 @@ export function createReportPlugin(opts: ReportOptions = {}): Command[] {
     salt: opts.salt,
   });
 
-  return [...dataPlugin, buildReportCommand()] as Command[];
+  return [...dataPlugin, buildReportCommand(opts.locale)] as Command[];
 }

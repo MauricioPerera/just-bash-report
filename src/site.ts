@@ -6,6 +6,7 @@
 
 import { type BrandTokens, brandToCssVars } from "./brand.js";
 import { mdToHtml, escHtml } from "./md.js";
+import { getStrings, type Locale } from "./i18n.js";
 
 export interface SitePost {
   _id: string;
@@ -28,6 +29,7 @@ export interface SiteConfig {
   baseUrl?: string;
   postsPerPage?: number;
   brand?: BrandTokens;
+  locale?: Locale;
 }
 
 // escHtml and mdToHtml imported from ./md.ts
@@ -36,7 +38,8 @@ function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-function siteHead(title: string, brand?: BrandTokens): string {
+function siteHead(title: string, brand?: BrandTokens, locale?: Locale): string {
+  const lang = getStrings(locale).htmlLang;
   const cssVars = brand ? brandToCssVars(brand) : "";
   const logoUrl = brand?.logo;
   const headingFont = brand?.typography?.heading?.fontFamily;
@@ -57,7 +60,7 @@ function siteHead(title: string, brand?: BrandTokens): string {
   const fontHead = headingFont ?? "inherit";
 
   return `<!DOCTYPE html>
-<html lang="es">
+<html lang="${lang}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -102,6 +105,7 @@ article .post-body code{background:#f1f5f9;padding:2px 6px;border-radius:4px;fon
 }
 
 function siteHeader(config: SiteConfig): string {
+  const s = getStrings(config.locale);
   const logoHtml = config.brand?.logo
     ? `<img src="${escHtml(config.brand.logo)}" alt="Logo" class="site-logo"><br>`
     : "";
@@ -110,13 +114,14 @@ function siteHeader(config: SiteConfig): string {
   <div class="site-title">${escHtml(config.title)}</div>
   ${config.description ? `<div class="site-desc">${escHtml(config.description)}</div>` : ""}
   <nav class="site-nav">
-    <a href="index.html">Inicio</a>
+    <a href="index.html">${escHtml(s.home)}</a>
     <a href="rss.xml">RSS</a>
   </nav>
 </div>`;
 }
 
 export function generateIndex(posts: SitePost[], config: SiteConfig): string {
+  const s = getStrings(config.locale);
   const header = siteHeader(config);
 
   const postCards = posts.map(post => {
@@ -128,7 +133,7 @@ export function generateIndex(posts: SitePost[], config: SiteConfig): string {
     return `<div class="post-card">
   <h2><a href="${slug}.html">${escHtml(post.Title)}</a></h2>
   <div class="post-meta">
-    ${post.Author ? `<span>Por ${escHtml(post.Author)}</span>` : ""}
+    ${post.Author ? `<span>${escHtml(s.byAuthor(post.Author))}</span>` : ""}
     ${post.PublishedAt ? `<span>${escHtml(post.PublishedAt)}</span>` : ""}
     ${catHtml}
   </div>
@@ -137,36 +142,37 @@ export function generateIndex(posts: SitePost[], config: SiteConfig): string {
 </div>`;
   }).join("\n");
 
-  return `${siteHead(config.title, config.brand)}
+  return `${siteHead(config.title, config.brand, config.locale)}
 <body>
 <div class="container">
   ${header}
   ${postCards}
-  <div class="footer">${escHtml(config.title)} &middot; Generado por just-bash-report</div>
+  <div class="footer">${escHtml(config.title)} &middot; ${escHtml(s.generatedFooter)}</div>
 </div>
 </body>
 </html>`;
 }
 
 export function generatePostPage(post: SitePost, config: SiteConfig): string {
+  const s = getStrings(config.locale);
   const tags = (post.Tags ?? []).map(t => `<span class="tag">${escHtml(t)}</span>`).join("");
 
-  return `${siteHead(`${post.Title} — ${config.title}`, config.brand)}
+  return `${siteHead(`${post.Title} — ${config.title}`, config.brand, config.locale)}
 <body>
 <div class="container">
   ${siteHeader(config)}
-  <a href="index.html" class="back-link">&larr; Volver al inicio</a>
+  <a href="index.html" class="back-link">${escHtml(s.backToHome)}</a>
   <article>
     <h1>${escHtml(post.Title)}</h1>
     <div class="post-meta">
-      ${post.Author ? `<span>Por ${escHtml(post.Author)}</span>` : ""}
+      ${post.Author ? `<span>${escHtml(s.byAuthor(post.Author))}</span>` : ""}
       ${post.PublishedAt ? `<span>${escHtml(post.PublishedAt)}</span>` : ""}
       ${post.Category ? `<span class="category">${escHtml(post.Category)}</span>` : ""}
     </div>
     ${tags ? `<div class="post-tags" style="margin-bottom:24px">${tags}</div>` : ""}
     <div class="post-body">${mdToHtml(post.Body ?? "")}</div>
   </article>
-  <div class="footer">${escHtml(config.title)} &middot; Generado por just-bash-report</div>
+  <div class="footer">${escHtml(config.title)} &middot; ${escHtml(s.generatedFooter)}</div>
 </div>
 </body>
 </html>`;

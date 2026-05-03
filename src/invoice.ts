@@ -4,6 +4,7 @@
  */
 
 import { type BrandTokens, brandToCssVars } from "./brand.js";
+import { getStrings, type Locale } from "./i18n.js";
 
 export interface InvoiceParty {
   name: string;
@@ -35,6 +36,7 @@ export interface InvoiceData {
   paymentInfo?: string;
   status?: "draft" | "sent" | "paid" | "overdue";
   brand?: BrandTokens;
+  locale?: Locale;
 }
 
 function esc(s: string): string {
@@ -47,6 +49,7 @@ function fmt(n: number, currency: string): string {
 }
 
 export function generateInvoiceHtml(inv: InvoiceData): string {
+  const t = getStrings(inv.locale);
   const cur = inv.currency ?? "$";
   const taxLabel = inv.taxLabel ?? "IVA";
   const brand = inv.brand;
@@ -87,9 +90,6 @@ export function generateInvoiceHtml(inv: InvoiceData): string {
     paid: { bg: "#dcfce7", text: "#16a34a" },
     overdue: { bg: "#fee2e2", text: "#dc2626" },
   };
-  const statusLabels: Record<string, string> = {
-    draft: "Borrador", sent: "Enviada", paid: "Pagada", overdue: "Vencida",
-  };
   const status = inv.status ?? "draft";
   const sc = statusColors[status] ?? statusColors.draft;
 
@@ -97,7 +97,7 @@ export function generateInvoiceHtml(inv: InvoiceData): string {
     const lines = [`<strong>${esc(p.name)}</strong>`];
     if (p.address) lines.push(esc(p.address));
     if (p.city) lines.push(esc(p.city));
-    if (p.taxId) lines.push(`RFC: ${esc(p.taxId)}`);
+    if (p.taxId) lines.push(`${esc(t.invoiceTaxId)}: ${esc(p.taxId)}`);
     if (p.email) lines.push(esc(p.email));
     if (p.phone) lines.push(esc(p.phone));
     return lines.join("<br>");
@@ -116,11 +116,11 @@ export function generateInvoiceHtml(inv: InvoiceData): string {
   const fontHeadCss = headingFont ? `font-family:${headingFont}` : "";
 
   return `<!DOCTYPE html>
-<html lang="es">
+<html lang="${t.htmlLang}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Factura ${esc(inv.number)}</title>
+<title>${esc(t.invoiceTitle)} ${esc(inv.number)}</title>
 ${fontLink}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -173,37 +173,37 @@ th.num{text-align:right}
   <div class="inv-header">
     <div>${logoUrl ? `<img src="${esc(logoUrl)}" alt="Logo" class="inv-logo">` : `<div style="font-size:20px;font-weight:700${fontHeadCss ? ";" + fontHeadCss : ""}">${esc(inv.from.name)}</div>`}</div>
     <div class="inv-title-block">
-      <div class="inv-title">FACTURA</div>
+      <div class="inv-title">${esc(t.invoiceTitle)}</div>
       <div class="inv-number">${esc(inv.number)}</div>
-      <div class="inv-status">${statusLabels[status] ?? status}</div>
+      <div class="inv-status">${esc(t.invoiceStatus[status])}</div>
     </div>
   </div>
 
   <div class="inv-parties">
     <div>
-      <div class="inv-party-label">De</div>
+      <div class="inv-party-label">${esc(t.invoiceFrom)}</div>
       <div class="inv-party">${partyHtml(inv.from)}</div>
     </div>
     <div>
-      <div class="inv-party-label">Para</div>
+      <div class="inv-party-label">${esc(t.invoiceTo)}</div>
       <div class="inv-party">${partyHtml(inv.to)}</div>
     </div>
   </div>
 
   <div class="inv-meta">
-    <div class="inv-meta-item"><strong>Fecha:</strong> ${esc(inv.date)}</div>
-    ${inv.dueDate ? `<div class="inv-meta-item"><strong>Vencimiento:</strong> ${esc(inv.dueDate)}</div>` : ""}
+    <div class="inv-meta-item"><strong>${esc(t.invoiceDate)}</strong> ${esc(inv.date)}</div>
+    ${inv.dueDate ? `<div class="inv-meta-item"><strong>${esc(t.invoiceDueDate)}</strong> ${esc(inv.dueDate)}</div>` : ""}
   </div>
 
   <div class="inv-table">
     <table>
       <thead>
         <tr>
-          <th>Descripción</th>
-          <th class="num">Cant.</th>
-          <th class="num">Precio Unit.</th>
+          <th>${esc(t.invoiceDescription)}</th>
+          <th class="num">${esc(t.invoiceQuantity)}</th>
+          <th class="num">${esc(t.invoiceUnitPrice)}</th>
           <th class="num">${esc(taxLabel)}</th>
-          <th class="num">Total</th>
+          <th class="num">${esc(t.invoiceTotal)}</th>
         </tr>
       </thead>
       <tbody>
@@ -214,18 +214,18 @@ th.num{text-align:right}
 
   <div class="inv-totals">
     <table class="inv-totals-table">
-      <tr><td>Subtotal</td><td>${fmt(subtotal, cur)}</td></tr>
+      <tr><td>${esc(t.invoiceSubtotal)}</td><td>${fmt(subtotal, cur)}</td></tr>
       ${totalTax > 0 ? `<tr><td>${esc(taxLabel)}</td><td>${fmt(totalTax, cur)}</td></tr>` : ""}
-      <tr class="total-row"><td>Total</td><td>${fmt(total, cur)}</td></tr>
+      <tr class="total-row"><td>${esc(t.invoiceTotal)}</td><td>${fmt(total, cur)}</td></tr>
     </table>
   </div>
 
   ${inv.notes || inv.paymentInfo ? `<div class="inv-footer">
-    ${inv.paymentInfo ? `<div class="inv-footer-section"><div class="inv-footer-label">Información de Pago</div><div class="inv-footer-text">${esc(inv.paymentInfo)}</div></div>` : ""}
-    ${inv.notes ? `<div class="inv-footer-section"><div class="inv-footer-label">Notas</div><div class="inv-footer-text">${esc(inv.notes)}</div></div>` : ""}
+    ${inv.paymentInfo ? `<div class="inv-footer-section"><div class="inv-footer-label">${esc(t.invoicePaymentInfo)}</div><div class="inv-footer-text">${esc(inv.paymentInfo)}</div></div>` : ""}
+    ${inv.notes ? `<div class="inv-footer-section"><div class="inv-footer-label">${esc(t.invoiceNotes)}</div><div class="inv-footer-text">${esc(inv.notes)}</div></div>` : ""}
   </div>` : ""}
 
-  <div class="inv-watermark">Generado por just-bash-report</div>
+  <div class="inv-watermark">${esc(t.generatedFooter)}</div>
 </div>
 </body>
 </html>`;

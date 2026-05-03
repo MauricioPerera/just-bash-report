@@ -3,6 +3,7 @@
 import { type BrandTokens, brandToCssVars } from "./brand.js";
 import { mdToHtml, escHtml } from "./md.js";
 import { CHARTJS_SOURCE } from "./chartjs-inline.js";
+import { getStrings, type Locale } from "./i18n.js";
 
 export interface KpiSection {
   kind: "kpi";
@@ -43,6 +44,7 @@ export interface ReportData {
   sections: Section[];
   brand?: BrandTokens;
   offline?: boolean;
+  locale?: Locale;
 }
 
 const DEFAULT_PALETTE = [
@@ -106,7 +108,7 @@ function renderChart(chart: ChartSection, idx: number, palette: string[]): strin
   </div>`;
 }
 
-function renderTable(table: TableSection, idx: number): string {
+function renderTable(table: TableSection, idx: number, s: ReturnType<typeof getStrings>): string {
   const tid = `table_${idx}`;
   const headerCells = table.columns.map(c => `<th onclick="sortTable('${tid}',${table.columns.indexOf(c)})">${escHtml(c)} <span class="sort-icon">↕</span></th>`).join("");
 
@@ -118,7 +120,7 @@ function renderTable(table: TableSection, idx: number): string {
   return `<div class="table-section">
     <div class="table-header">
       <h3 class="table-title">${escHtml(table.title)}</h3>
-      <input type="text" class="table-search" placeholder="Buscar..." oninput="filterTable('${tid}',this.value)">
+      <input type="text" class="table-search" placeholder="${escHtml(s.searchPlaceholder)}" oninput="filterTable('${tid}',this.value)">
     </div>
     <div class="table-scroll">
       <table id="${tid}">
@@ -126,7 +128,7 @@ function renderTable(table: TableSection, idx: number): string {
         <tbody>${bodyRows}</tbody>
       </table>
     </div>
-    <div class="table-footer">${table.rows.length} registros</div>
+    <div class="table-footer">${table.rows.length} ${escHtml(s.records)}</div>
   </div>`;
 }
 
@@ -136,6 +138,7 @@ function renderText(text: TextSection): string {
 
 export function generateHtml(report: ReportData): string {
   const brand = report.brand;
+  const s = getStrings(report.locale);
   const palette = brand?.chartColors ?? DEFAULT_PALETTE;
   const cssVarOverrides = brand ? brandToCssVars(brand) : "";
   const headingFont = brand?.typography?.heading?.fontFamily;
@@ -169,7 +172,7 @@ export function generateHtml(report: ReportData): string {
   for (const sec of others) {
     switch (sec.kind) {
       case "chart": bodySections.push(renderChart(sec, chartIdx++, palette)); break;
-      case "table": bodySections.push(renderTable(sec, tableIdx++)); break;
+      case "table": bodySections.push(renderTable(sec, tableIdx++, s)); break;
       case "text": bodySections.push(renderText(sec)); break;
     }
   }
@@ -182,7 +185,7 @@ export function generateHtml(report: ReportData): string {
   const fontHeadingCss = headingFont ? `font-family:var(--font-heading, ${headingFont})` : "";
 
   return `<!DOCTYPE html>
-<html lang="es">
+<html lang="${s.htmlLang}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -241,11 +244,11 @@ tr:hover td{background:#f8fafc}
     ${logoHtml}
     <h1>${escHtml(report.title)}</h1>
     ${report.subtitle ? `<div class="subtitle">${escHtml(report.subtitle)}</div>` : ""}
-    <div class="date">Generado: ${escHtml(report.generated)}</div>
+    <div class="date">${escHtml(s.generated)} ${escHtml(report.generated)}</div>
   </div>
   ${bodySections.join("\n  ")}
   <div class="footer">
-    Generado automáticamente por just-bash-report &middot; ${escHtml(report.generated)}
+    ${escHtml(s.generatedFooter)} &middot; ${escHtml(report.generated)}
   </div>
 </div>
 <script>
