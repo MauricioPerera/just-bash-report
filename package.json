@@ -36,7 +36,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "prebuild": "node scripts/embed-chartjs.cjs",
+    "build": "npm run prebuild && tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "prepublishOnly": "npm run build"
@@ -49,6 +50,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
+    "chart.js": "^4.5.1",
     "just-bash": "^2.14.4",
     "tsup": "^8.3.5",
     "typescript": "^5.6.3",

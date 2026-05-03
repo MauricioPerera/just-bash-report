@@ -34,6 +34,8 @@ await bash.exec(`report render --output=/reports/monthly.html`);
 
 The output is a single HTML file with charts (Chart.js), sortable tables, KPI cards, and markdown sections. Opens in any browser, prints to PDF.
 
+**Note on dependencies:** By default, reports load Chart.js from CDN and custom fonts from Google Fonts. Use `--offline` to inline Chart.js (~200KB) and skip external fonts for fully self-contained files that work without internet.
+
 ## Brand Theming
 
 Create a `BRAND.md` file with your company's design tokens (compatible with [google-labs-code/design.md](https://github.com/google-labs-code/design.md)):
@@ -70,7 +72,7 @@ Then pass `--brand=/path/to/BRAND.md` to any command. Colors, fonts, and logo ar
 
 ```bash
 # Start a new report
-report create "Report Title" [--subtitle=...] [--brand=/path/to/BRAND.md]
+report create "Report Title" [--subtitle=...] [--brand=/path/to/BRAND.md] [--offline]
 
 # Add KPI cards
 report kpi "Label" <value> [--trend=+12%] [--color=#hex]
@@ -150,6 +152,8 @@ Posts are filtered by `Status` field (default: `"Published"`). Draft posts are e
 
 **Expected fields:** `Title`, `Body`, `Status`, `Author`, `Category`, `Tags`, `PublishedAt`, `slug` (auto-generated from title if missing).
 
+**Custom field names:** Use `--field-title=nombre`, `--field-body=contenido`, `--field-status=estado`, etc. to map collection fields that don't match the defaults. All 8 fields are mappable: `--field-title`, `--field-body`, `--field-status`, `--field-author`, `--field-category`, `--field-tags`, `--field-date`, `--field-slug`.
+
 ## Architecture
 
 ```
@@ -187,6 +191,10 @@ import type {
 | **just-bash-report** | Dashboards, invoices, and static sites (this package) |
 | [js-doc-store](https://github.com/MauricioPerera/js-doc-store) | Document database engine |
 | [js-vector-store](https://github.com/MauricioPerera/js-vector-store) | Vector similarity search engine |
+
+## Concurrency
+
+Report state lives in a per-command closure. Single-writer only — concurrent `report create` + `report kpi` calls from different contexts will interfere. Each `Bash` instance gets its own report state, so multiple instances are safe.
 
 ## License
 

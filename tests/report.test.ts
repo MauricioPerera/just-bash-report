@@ -241,13 +241,16 @@ describe("brand theming", () => {
 });
 
 describe("offline mode", () => {
-  it("omits Chart.js CDN in offline mode", async () => {
+  it("inlines Chart.js in offline mode", async () => {
     await run(`report create "T" --offline`);
     await run(`report kpi "X" 1`);
+    await run(`report chart pie '{"labels":["A"],"values":[1],"title":"T"}'`);
     await run(`report render --output=/offline.html`);
     const html = await bash.readFile("/offline.html");
     expect(html).not.toContain("cdn.jsdelivr.net");
-    expect(html).toContain("offline mode");
+    // Chart.js source is inlined — verify library is present
+    expect(html.length).toBeGreaterThan(200000); // Chart.js adds ~200KB
+    expect(html).toContain("new Chart(");
   });
 
   it("includes Chart.js CDN by default", async () => {
