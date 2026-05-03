@@ -37,6 +37,8 @@ export interface InvoiceData {
   status?: "draft" | "sent" | "paid" | "overdue";
   brand?: BrandTokens;
   locale?: Locale;
+  /** Skip Google Fonts CDN — falls back to system fonts when set with custom brand fonts */
+  offline?: boolean;
 }
 
 function esc(s: string): string {
@@ -58,7 +60,7 @@ export function generateInvoiceHtml(inv: InvoiceData): string {
   const headingFont = brand?.typography?.heading?.fontFamily;
   const bodyFont = brand?.typography?.body?.fontFamily;
 
-  // Fonts
+  // Fonts (skipped when offline=true)
   const fontsToLoad: string[] = [];
   for (const f of [headingFont, bodyFont]) {
     if (f && !f.includes("system") && !f.includes("sans-serif")) {
@@ -66,9 +68,13 @@ export function generateInvoiceHtml(inv: InvoiceData): string {
       if (!fontsToLoad.includes(family)) fontsToLoad.push(family);
     }
   }
-  const fontLink = fontsToLoad.length > 0
-    ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${fontsToLoad.map(f => `family=${encodeURIComponent(f)}:wght@400;600;700`).join("&")}&display=swap">`
-    : "";
+  const fontLink = inv.offline
+    ? (fontsToLoad.length > 0
+        ? `<!-- offline mode: ${fontsToLoad.length} custom font(s) skipped, falling back to system fonts -->`
+        : "")
+    : (fontsToLoad.length > 0
+        ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${fontsToLoad.map(f => `family=${encodeURIComponent(f)}:wght@400;600;700`).join("&")}&display=swap">`
+        : "");
 
   // Calculate totals
   let subtotal = 0;

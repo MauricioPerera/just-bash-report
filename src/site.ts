@@ -30,6 +30,8 @@ export interface SiteConfig {
   postsPerPage?: number;
   brand?: BrandTokens;
   locale?: Locale;
+  /** Skip Google Fonts CDN — falls back to system fonts when set with custom brand fonts */
+  offline?: boolean;
 }
 
 // escHtml and mdToHtml imported from ./md.ts
@@ -38,7 +40,7 @@ function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-function siteHead(title: string, brand?: BrandTokens, locale?: Locale): string {
+function siteHead(title: string, brand?: BrandTokens, locale?: Locale, offline?: boolean): string {
   const lang = getStrings(locale).htmlLang;
   const cssVars = brand ? brandToCssVars(brand) : "";
   const logoUrl = brand?.logo;
@@ -52,9 +54,13 @@ function siteHead(title: string, brand?: BrandTokens, locale?: Locale): string {
       if (!fontsToLoad.includes(family)) fontsToLoad.push(family);
     }
   }
-  const fontLink = fontsToLoad.length > 0
-    ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${fontsToLoad.map(f => `family=${encodeURIComponent(f)}:wght@400;600;700`).join("&")}&display=swap">`
-    : "";
+  const fontLink = offline
+    ? (fontsToLoad.length > 0
+        ? `<!-- offline mode: ${fontsToLoad.length} custom font(s) skipped, falling back to system fonts -->`
+        : "")
+    : (fontsToLoad.length > 0
+        ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${fontsToLoad.map(f => `family=${encodeURIComponent(f)}:wght@400;600;700`).join("&")}&display=swap">`
+        : "");
 
   const fontBody = bodyFont ?? "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
   const fontHead = headingFont ?? "inherit";
@@ -142,7 +148,7 @@ export function generateIndex(posts: SitePost[], config: SiteConfig): string {
 </div>`;
   }).join("\n");
 
-  return `${siteHead(config.title, config.brand, config.locale)}
+  return `${siteHead(config.title, config.brand, config.locale, config.offline)}
 <body>
 <div class="container">
   ${header}
@@ -157,7 +163,7 @@ export function generatePostPage(post: SitePost, config: SiteConfig): string {
   const s = getStrings(config.locale);
   const tags = (post.Tags ?? []).map(t => `<span class="tag">${escHtml(t)}</span>`).join("");
 
-  return `${siteHead(`${post.Title} — ${config.title}`, config.brand, config.locale)}
+  return `${siteHead(`${post.Title} — ${config.title}`, config.brand, config.locale, config.offline)}
 <body>
 <div class="container">
   ${siteHeader(config)}

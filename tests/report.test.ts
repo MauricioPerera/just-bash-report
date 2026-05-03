@@ -336,6 +336,81 @@ describe("edge cases", () => {
   });
 });
 
+// ── Issue #7: --offline honored in invoice and site ──────
+
+const FONT_BRAND = `---
+colors:
+  primary: "#000"
+  secondary: "#111"
+  accent: "#222"
+  background: "#fff"
+  card: "#fff"
+  text: "#000"
+  muted: "#666"
+typography:
+  heading:
+    fontFamily: "Playfair Display, serif"
+  body:
+    fontFamily: "Inter, sans-serif"
+---
+`;
+
+describe("issue #7: --offline honored in invoice and site", () => {
+  it("invoice without --offline includes Google Fonts CDN link when brand has custom fonts", async () => {
+    const fontsBash = new Bash({
+      fs: new InMemoryFs({ "/brand.md": FONT_BRAND }),
+      customCommands: createReportPlugin({ rootDir: "/data" }),
+    });
+    const r = await fontsBash.exec(`report invoice '${JSON.stringify({
+      number: "X", date: "2026", from: { name: "A" }, to: { name: "B" },
+      items: [{ description: "x", quantity: 1, unitPrice: 1 }],
+    })}' --brand=/brand.md --output=/x.html`);
+    expect(r.exitCode).toBe(0);
+    const html = await fontsBash.readFile("/x.html");
+    expect(html).toContain("fonts.googleapis.com");
+  });
+
+  it("invoice with --offline skips Google Fonts and leaves a comment", async () => {
+    const fontsBash = new Bash({
+      fs: new InMemoryFs({ "/brand.md": FONT_BRAND }),
+      customCommands: createReportPlugin({ rootDir: "/data" }),
+    });
+    const r = await fontsBash.exec(`report invoice '${JSON.stringify({
+      number: "X", date: "2026", from: { name: "A" }, to: { name: "B" },
+      items: [{ description: "x", quantity: 1, unitPrice: 1 }],
+    })}' --brand=/brand.md --output=/x.html --offline`);
+    expect(r.exitCode).toBe(0);
+    const html = await fontsBash.readFile("/x.html");
+    expect(html).not.toContain("fonts.googleapis.com");
+    expect(html).toContain("offline mode");
+  });
+
+  it("site without --offline includes Google Fonts CDN link", async () => {
+    const fontsBash = new Bash({
+      fs: new InMemoryFs({ "/brand.md": FONT_BRAND }),
+      customCommands: createReportPlugin({ rootDir: "/data" }),
+    });
+    await fontsBash.exec(`db content insert '{"Title":"A","Body":"a","Status":"Published"}'`);
+    await fontsBash.exec(`report site content --brand=/brand.md --output=/s`);
+    const idx = await fontsBash.readFile("/s/index.html");
+    expect(idx).toContain("fonts.googleapis.com");
+  });
+
+  it("site with --offline skips Google Fonts in index AND post pages", async () => {
+    const fontsBash = new Bash({
+      fs: new InMemoryFs({ "/brand.md": FONT_BRAND }),
+      customCommands: createReportPlugin({ rootDir: "/data" }),
+    });
+    await fontsBash.exec(`db content insert '{"Title":"A","Body":"a","Status":"Published"}'`);
+    await fontsBash.exec(`report site content --brand=/brand.md --output=/s --offline`);
+    const idx = await fontsBash.readFile("/s/index.html");
+    const post = await fontsBash.readFile("/s/a.html");
+    expect(idx).not.toContain("fonts.googleapis.com");
+    expect(post).not.toContain("fonts.googleapis.com");
+    expect(idx).toContain("offline mode");
+  });
+});
+
 // ── Issue #6: locale option (i18n) ───────────────────────
 
 describe("issue #6: locale (i18n)", () => {

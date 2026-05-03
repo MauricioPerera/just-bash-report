@@ -519,7 +519,8 @@ function buildReportCommand(defaultLocale?: Locale): Command {
         );
       }
 
-      const config: SiteConfig = { title, description, baseUrl, brand, locale };
+      const offline = fl.get("offline") === "true";
+      const config: SiteConfig = { title, description, baseUrl, brand, locale, offline };
 
       // Generate index
       const indexHtml = generateIndex(posts, config);
@@ -570,6 +571,8 @@ function buildReportCommand(defaultLocale?: Locale): Command {
 
       // Locale: explicit field on the JSON wins, else --locale flag, else plugin default
       data.locale = data.locale ?? getLocale(fl);
+      // Offline: --offline flag or explicit field on the JSON
+      data.offline = data.offline ?? (fl.get("offline") === "true");
 
       const html = generateInvoiceHtml(data);
       const output = fl.get("output") ?? `/invoices/${data.number}.html`;
