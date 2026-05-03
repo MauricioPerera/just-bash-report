@@ -336,6 +336,49 @@ describe("edge cases", () => {
   });
 });
 
+// ── Issue #5: deterministic table IDs ────────────────────
+
+describe("issue #5: deterministic table IDs", () => {
+  const renderOnce = async () => {
+    const b = new Bash({
+      fs: new InMemoryFs({}),
+      customCommands: createReportPlugin({ rootDir: "/data" }),
+    });
+    await b.exec(`db users insert '{"name":"Ana","age":30}'`);
+    await b.exec(`db users insert '{"name":"Bob","age":40}'`);
+    await b.exec(`report create "T"`);
+    await b.exec(`report table users --title=People`);
+    await b.exec(`report render --output=/out.html`);
+    return b.readFile("/out.html");
+  };
+
+  it("two renders produce identical HTML", async () => {
+    const h1 = await renderOnce();
+    const h2 = await renderOnce();
+    expect(h1).toBe(h2);
+  });
+
+  it("table IDs are sequential (table_0, table_1, ...)", async () => {
+    const b = new Bash({
+      fs: new InMemoryFs({}),
+      customCommands: createReportPlugin({ rootDir: "/data" }),
+    });
+    await b.exec(`db users insert '{"name":"A"}'`);
+    await b.exec(`db users insert '{"name":"B"}'`);
+    await b.exec(`report create "T"`);
+    await b.exec(`report table users --title=T1`);
+    await b.exec(`report table users --title=T2`);
+    await b.exec(`report table users --title=T3`);
+    await b.exec(`report render --output=/o.html`);
+    const html = await b.readFile("/o.html");
+    expect(html).toContain('id="table_0"');
+    expect(html).toContain('id="table_1"');
+    expect(html).toContain('id="table_2"');
+    // No legacy random IDs
+    expect(html).not.toMatch(/table_[a-z]{4,}/);
+  });
+});
+
 // ── Issue #4: slug collisions in reportSite ──────────────
 
 describe("issue #4: reportSite detects slug collisions", () => {

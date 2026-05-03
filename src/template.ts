@@ -106,8 +106,8 @@ function renderChart(chart: ChartSection, idx: number, palette: string[]): strin
   </div>`;
 }
 
-function renderTable(table: TableSection): string {
-  const tid = `table_${Math.random().toString(36).slice(2, 8)}`;
+function renderTable(table: TableSection, idx: number): string {
+  const tid = `table_${idx}`;
   const headerCells = table.columns.map(c => `<th onclick="sortTable('${tid}',${table.columns.indexOf(c)})">${escHtml(c)} <span class="sort-icon">↕</span></th>`).join("");
 
   const bodyRows = table.rows.map(row => {
@@ -161,6 +161,7 @@ export function generateHtml(report: ReportData): string {
   const others = report.sections.filter(s => s.kind !== "kpi");
 
   let chartIdx = 0;
+  let tableIdx = 0;
   const bodySections: string[] = [];
 
   if (kpis.length > 0) bodySections.push(renderKpis(kpis, palette));
@@ -168,7 +169,7 @@ export function generateHtml(report: ReportData): string {
   for (const sec of others) {
     switch (sec.kind) {
       case "chart": bodySections.push(renderChart(sec, chartIdx++, palette)); break;
-      case "table": bodySections.push(renderTable(sec)); break;
+      case "table": bodySections.push(renderTable(sec, tableIdx++)); break;
       case "text": bodySections.push(renderText(sec)); break;
     }
   }
