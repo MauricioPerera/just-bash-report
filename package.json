@@ -1,7 +1,7 @@
 {
   "name": "just-bash-report",
   "version": "1.2.1",
-  "description": "just-bash plugin: generate self-contained HTML dashboards and reports from agent data. Charts, KPIs, tables, and text — one file, opens in any browser.",
+  "description": "Generate self-contained HTML dashboards, invoices, and static sites from agent data. just-bash plugin with pure HTML generators (use without just-bash). Charts, KPIs, tables, brand theming, i18n.",
   "license": "MIT",
   "author": "Mauricio Perera",
   "repository": {
@@ -19,7 +19,12 @@
     "charts",
     "html-report",
     "agent-shell",
-    "llm-tools"
+    "llm-tools",
+    "invoice",
+    "html-invoice",
+    "static-site-generator",
+    "ssg",
+    "rss"
   ],
   "type": "module",
   "main": "./dist/index.cjs",
