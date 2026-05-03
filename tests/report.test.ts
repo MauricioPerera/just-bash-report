@@ -336,6 +336,76 @@ describe("edge cases", () => {
   });
 });
 
+// ── Issue #2: report state namespaced by --id ─────────────
+
+describe("issue #2: multiple reports via --id", () => {
+  it("two parallel reports do not interfere", async () => {
+    await run(`report create "Dept A" --id=a`);
+    await run(`report create "Dept B" --id=b`);
+    await run(`report kpi "Users" 100 --id=a`);
+    await run(`report kpi "Users" 200 --id=b`);
+    await run(`report kpi "Revenue" 5000 --id=a`);
+
+    const sa = json<{ breakdown: { kpis: number }; title: string }>(
+      (await run(`report status --id=a`)).out
+    );
+    const sb = json<{ breakdown: { kpis: number }; title: string }>(
+      (await run(`report status --id=b`)).out
+    );
+    expect(sa.title).toBe("Dept A");
+    expect(sb.title).toBe("Dept B");
+    expect(sa.breakdown.kpis).toBe(2);
+    expect(sb.breakdown.kpis).toBe(1);
+  });
+
+  it("each --id renders independently", async () => {
+    await run(`report create "A" --id=a`);
+    await run(`report kpi "x" 1 --id=a`);
+    await run(`report create "B" --id=b`);
+    await run(`report kpi "y" 2 --id=b`);
+
+    await run(`report render --id=a --output=/a.html`);
+    await run(`report render --id=b --output=/b.html`);
+
+    const ha = await bash.readFile("/a.html");
+    const hb = await bash.readFile("/b.html");
+    expect(ha).toContain("A");
+    expect(ha).toContain(">x<");
+    expect(hb).toContain("B");
+    expect(hb).toContain(">y<");
+    expect(ha).not.toContain(">y<");
+    expect(hb).not.toContain(">x<");
+  });
+
+  it("backwards-compat: omitting --id uses 'default' bucket", async () => {
+    await run(`report create "Legacy"`);
+    await run(`report kpi "K" 1`);
+    const s = json<{ active: boolean; title: string; id?: string }>(
+      (await run(`report status`)).out
+    );
+    expect(s.active).toBe(true);
+    expect(s.title).toBe("Legacy");
+    expect(s.id).toBe("default");
+  });
+
+  it("status without --id when other ids exist hints them", async () => {
+    await run(`report create "X" --id=ns1`);
+    await run(`report create "Y" --id=ns2`);
+    const s = json<{ active: boolean; ids?: string[] }>((await run(`report status`)).out);
+    expect(s.active).toBe(false);
+    expect(s.ids).toEqual(expect.arrayContaining(["ns1", "ns2"]));
+  });
+
+  it("kpi/chart/table/text/render with unknown --id all fail with helpful message", async () => {
+    const k = await run(`report kpi "x" 1 --id=missing`);
+    expect(k.code).toBe(2);
+    expect(k.err).toContain("missing");
+    const r = await run(`report render --id=missing`);
+    expect(r.code).toBe(2);
+    expect(r.err).toContain("missing");
+  });
+});
+
 // ── Issue #1: writeFile error handling ────────────────────
 
 describe("issue #1: render/invoice writeFile error handling", () => {

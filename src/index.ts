@@ -61,10 +61,12 @@ interface ReportState {
 }
 
 function buildReportCommand(): Command {
-  // Each Bash instance gets its own report state via WeakMap on exec context
-  // But since we don't have access to fs as key here, use a simple closure.
-  // Single-writer assumption (same as wiki).
-  let current: ReportState | null = null;
+  // Per-id report state. The default id is "default", so callers that don't
+  // pass --id keep the original single-report-per-plugin behavior. Multiple
+  // concurrent reports within one Bash instance can be built by passing
+  // distinct --id values.
+  const reports = new Map<string, ReportState>();
+  const getId = (fl: Map<string, string>): string => fl.get("id") ?? "default";
 
   return defineCommand("report", async (args, ctx) => {
     const exec: Exec = (cmd: string) => {
@@ -85,18 +87,18 @@ function buildReportCommand(): Command {
     }
 
     const sub = positional[0];
-    if (!sub) return fail(2, "usage: report <create|kpi|chart|table|text|auto|render|quick|invoice|site> [...]");
+    if (!sub) return fail(2, "usage: report <create|kpi|chart|table|text|auto|render|quick|invoice|site> [...] [--id=<name>]");
 
     switch (sub) {
       case "create": return await reportCreate(positional, flags);
       case "kpi": return reportKpi(positional, flags);
-      case "chart": return reportChart(positional);
+      case "chart": return reportChart(positional, flags);
       case "table": return reportTable(exec, positional, flags);
-      case "text": return reportText(positional);
+      case "text": return reportText(positional, flags);
       case "render": return reportRender(ctx, flags);
       case "auto": return reportAuto(exec, positional, flags, ctx);
       case "quick": return reportQuick(exec, positional, flags, ctx);
-      case "status": return reportStatus();
+      case "status": return reportStatus(flags);
       case "invoice": return reportInvoice(positional, flags);
       case "site": return reportSite(exec, positional, flags);
       default: return fail(2, `unknown report command: ${sub}`);
@@ -120,17 +122,20 @@ function buildReportCommand(): Command {
       }
 
       const offline = fl.get("offline") === "true";
-      current = { title, subtitle: fl.get("subtitle"), sections: [], brand, offline };
-      return ok(JSON.stringify({ created: true, title, brand: !!brand, offline }));
+      const id = getId(fl);
+      reports.set(id, { title, subtitle: fl.get("subtitle"), sections: [], brand, offline });
+      return ok(JSON.stringify({ created: true, title, brand: !!brand, offline, id }));
     }
 
     // ── KPI ───────────────────────────────────────────────
 
     function reportKpi(pos: string[], fl: Map<string, string>): ExecResult {
-      if (!current) return fail(2, "no report created. Run 'report create <title>' first");
+      const id = getId(fl);
+      const current = reports.get(id);
+      if (!current) return fail(2, `no report created${id !== "default" ? ` for id '${id}'` : ""}. Run 'report create <title>${id !== "default" ? ` --id=${id}` : ""}' first`);
       const label = pos[1];
       const value = pos[2];
-      if (!label || value === undefined) return fail(2, "usage: report kpi <label> <value> [--trend=+12%] [--color=#hex]");
+      if (!label || value === undefined) return fail(2, "usage: report kpi <label> <value> [--trend=+12%] [--color=#hex] [--id=<name>]");
 
       const kpi: KpiSection = {
         kind: "kpi",
@@ -145,11 +150,13 @@ function buildReportCommand(): Command {
 
     // ── CHART ─────────────────────────────────────────────
 
-    function reportChart(pos: string[]): ExecResult {
-      if (!current) return fail(2, "no report created. Run 'report create <title>' first");
+    function reportChart(pos: string[], fl: Map<string, string>): ExecResult {
+      const id = getId(fl);
+      const current = reports.get(id);
+      if (!current) return fail(2, `no report created${id !== "default" ? ` for id '${id}'` : ""}. Run 'report create <title>${id !== "default" ? ` --id=${id}` : ""}' first`);
       const chartType = pos[1] as "pie" | "bar" | "line" | "doughnut";
       const jsonArg = pos.slice(2).join(" ");
-      if (!chartType || !jsonArg) return fail(2, "usage: report chart <pie|bar|line|doughnut> '<json>' --title=...");
+      if (!chartType || !jsonArg) return fail(2, "usage: report chart <pie|bar|line|doughnut> '<json>' [--id=<name>]");
 
       let data: { labels: string[]; values: number[]; title?: string; colors?: string[] };
       try { data = JSON.parse(jsonArg); } catch { return fail(2, "invalid chart json"); }
@@ -171,9 +178,11 @@ function buildReportCommand(): Command {
     // ── TABLE ─────────────────────────────────────────────
 
     async function reportTable(exec: Exec, pos: string[], fl: Map<string, string>): Promise<ExecResult> {
-      if (!current) return fail(2, "no report created. Run 'report create <title>' first");
+      const id = getId(fl);
+      const current = reports.get(id);
+      if (!current) return fail(2, `no report created${id !== "default" ? ` for id '${id}'` : ""}. Run 'report create <title>${id !== "default" ? ` --id=${id}` : ""}' first`);
       const source = pos[1]; // collection name or JSON data
-      if (!source) return fail(2, "usage: report table <collection|json> [--title=...] [--columns=col1,col2]");
+      if (!source) return fail(2, "usage: report table <collection|json> [--title=...] [--columns=col1,col2] [--id=<name>]");
 
       const title = fl.get("title") ?? source;
       const columnsFlag = fl.get("columns");
@@ -211,10 +220,12 @@ function buildReportCommand(): Command {
 
     // ── TEXT ───────────────────────────────────────────────
 
-    function reportText(pos: string[]): ExecResult {
-      if (!current) return fail(2, "no report created. Run 'report create <title>' first");
+    function reportText(pos: string[], fl: Map<string, string>): ExecResult {
+      const id = getId(fl);
+      const current = reports.get(id);
+      if (!current) return fail(2, `no report created${id !== "default" ? ` for id '${id}'` : ""}. Run 'report create <title>${id !== "default" ? ` --id=${id}` : ""}' first`);
       const content = pos.slice(1).join(" ");
-      if (!content) return fail(2, "usage: report text '<markdown>'");
+      if (!content) return fail(2, "usage: report text '<markdown>' [--id=<name>]");
 
       current.sections.push({ kind: "text", content });
       return ok(JSON.stringify({ added: "text", length: content.length }));
@@ -223,7 +234,9 @@ function buildReportCommand(): Command {
     // ── RENDER ────────────────────────────────────────────
 
     async function reportRender(_ctx: unknown, fl: Map<string, string>): Promise<ExecResult> {
-      if (!current) return fail(2, "no report created. Run 'report create <title>' first");
+      const id = getId(fl);
+      const current = reports.get(id);
+      if (!current) return fail(2, `no report created${id !== "default" ? ` for id '${id}'` : ""}. Run 'report create <title>${id !== "default" ? ` --id=${id}` : ""}' first`);
 
       const output = fl.get("output") ?? "/reports/report.html";
       const now = new Date().toISOString().replace("T", " ").slice(0, 19);
@@ -277,7 +290,9 @@ function buildReportCommand(): Command {
       if (docsR.exitCode !== 0) return fail(docsR.exitCode, docsR.stderr.trim());
       const docs = JSON.parse(docsR.stdout) as Array<Record<string, unknown>>;
 
-      current = { title, sections: [], brand };
+      const id = getId(fl);
+      const current: ReportState = { title, sections: [], brand };
+      reports.set(id, current);
 
       // KPI: total count
       current.sections.push({ kind: "kpi", label: "Total Registros", value: docs.length });
@@ -378,7 +393,8 @@ function buildReportCommand(): Command {
         }
       }
 
-      current = { title: spec.title, subtitle: spec.subtitle, sections: spec.sections };
+      const id = getId(fl);
+      reports.set(id, { title: spec.title, subtitle: spec.subtitle, sections: spec.sections });
       return reportRender(ctx, fl);
     }
 
@@ -499,10 +515,19 @@ function buildReportCommand(): Command {
       }));
     }
 
-    function reportStatus(): ExecResult {
-      if (!current) return ok(JSON.stringify({ active: false }));
+    function reportStatus(fl: Map<string, string>): ExecResult {
+      const id = getId(fl);
+      const current = reports.get(id);
+      if (!current) {
+        // If --id not specified, also report all known ids so callers can discover them
+        if (!fl.has("id") && reports.size > 0) {
+          return ok(JSON.stringify({ active: false, ids: [...reports.keys()] }));
+        }
+        return ok(JSON.stringify({ active: false }));
+      }
       return ok(JSON.stringify({
         active: true,
+        id,
         title: current.title,
         sections: current.sections.length,
         breakdown: {
