@@ -41,6 +41,7 @@ export interface ReportData {
   generated: string;
   sections: Section[];
   brand?: BrandTokens;
+  offline?: boolean;
 }
 
 const DEFAULT_PALETTE = [
@@ -138,6 +139,7 @@ export function generateHtml(report: ReportData): string {
   const cssVarOverrides = brand ? brandToCssVars(brand) : "";
   const headingFont = brand?.typography?.heading?.fontFamily;
   const bodyFont = brand?.typography?.body?.fontFamily;
+  const offline = report.offline ?? false;
   const logoUrl = report.logo ?? brand?.logo;
 
   // Detect if we need Google Fonts
@@ -183,8 +185,8 @@ export function generateHtml(report: ReportData): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escHtml(report.title)}</title>
-${fontLink}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+${offline ? "" : fontLink}
+${offline ? "<!-- offline mode: charts require Chart.js loaded separately -->" : '<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>'}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#f8fafc;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--accent:#6366f1;--success:#10b981;--danger:#ef4444;--radius:12px${cssVarOverrides ? ";" + cssVarOverrides : ""}}

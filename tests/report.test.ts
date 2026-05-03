@@ -187,8 +187,9 @@ describe("report site", () => {
   it("generates index + pages + RSS", async () => {
     const r = await run(`report site blog --title="Test Blog" --output=/site`);
     expect(r.code).toBe(0);
-    const data = json<{ pages: number; files: string[] }>(r.out);
-    expect(data.pages).toBe(3); // 2 posts + index
+    const data = json<{ htmlPages: number; feeds: number; files: string[] }>(r.out);
+    expect(data.htmlPages).toBe(3); // 2 posts + index
+    expect(data.feeds).toBe(1);
     expect(data.files).toContain("index.html");
     expect(data.files).toContain("rss.xml");
 
@@ -236,6 +237,81 @@ describe("brand theming", () => {
     const html = await bash.readFile("/b-inv.html");
     expect(html).toContain("#1a1a2e");
     expect(html).toContain("logo.svg");
+  });
+});
+
+describe("offline mode", () => {
+  it("omits Chart.js CDN in offline mode", async () => {
+    await run(`report create "T" --offline`);
+    await run(`report kpi "X" 1`);
+    await run(`report render --output=/offline.html`);
+    const html = await bash.readFile("/offline.html");
+    expect(html).not.toContain("cdn.jsdelivr.net");
+    expect(html).toContain("offline mode");
+  });
+
+  it("includes Chart.js CDN by default", async () => {
+    await run(`report create "T"`);
+    await run(`report kpi "X" 1`);
+    await run(`report render --output=/online.html`);
+    const html = await bash.readFile("/online.html");
+    expect(html).toContain("cdn.jsdelivr.net/npm/chart.js");
+  });
+});
+
+describe("BRAND.md chartColors array", () => {
+  it("parses YAML sequence chartColors", async () => {
+    const brand = `---
+colors:
+  primary: "#ff0000"
+  text: "#000"
+chartColors:
+  - "#ff0000"
+  - "#00ff00"
+  - "#0000ff"
+---
+`;
+    const customBash = new Bash({
+      fs: new InMemoryFs({ "/b.md": brand }),
+      customCommands: createReportPlugin({ rootDir: "/data" }),
+    });
+    await customBash.exec(`report create "T" --brand=/b.md`);
+    await customBash.exec(`report chart pie '{"labels":["A","B","C"],"values":[1,2,3],"title":"X"}'`);
+    await customBash.exec(`report render --output=/colors.html`);
+    const html = await customBash.readFile("/colors.html");
+    expect(html).toContain("#ff0000");
+    expect(html).toContain("#00ff00");
+    expect(html).toContain("#0000ff");
+  });
+});
+
+describe("BRAND.md edge cases", () => {
+  it("falls back to defaults when no front matter", async () => {
+    const customBash = new Bash({
+      fs: new InMemoryFs({ "/b.md": "# No front matter here" }),
+      customCommands: createReportPlugin({ rootDir: "/data" }),
+    });
+    await customBash.exec(`report create "T" --brand=/b.md`);
+    await customBash.exec(`report kpi "X" 1`);
+    await customBash.exec(`report render --output=/r.html`);
+    const html = await customBash.readFile("/r.html");
+    expect(html).toContain("#6366f1"); // default accent
+  });
+});
+
+describe("report site field mapping", () => {
+  it("maps custom field names", async () => {
+    await run(`db posts insert '{"titulo":"Post A","contenido":"Hello","estado":"publicado","autor":"Ana"}'`);
+    await run(`db posts insert '{"titulo":"Post B","contenido":"World","estado":"publicado","autor":"Bob"}'`);
+    await run(`db posts insert '{"titulo":"Draft","contenido":"WIP","estado":"borrador"}'`);
+
+    const r = await run(`report site posts --title="Blog" --output=/mapped --field-title=titulo --field-body=contenido --field-status=estado --field-author=autor --status=publicado`);
+    expect(r.code).toBe(0);
+
+    const index = await bash.readFile("/mapped/index.html");
+    expect(index).toContain("Post A");
+    expect(index).toContain("Post B");
+    expect(index).not.toContain("Draft");
   });
 });
 

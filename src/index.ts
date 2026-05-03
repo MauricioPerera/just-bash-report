@@ -27,6 +27,7 @@ interface ReportState {
   subtitle?: string;
   sections: Section[];
   brand?: BrandTokens;
+  offline?: boolean;
 }
 
 function buildReportCommand(): Command {
@@ -88,8 +89,9 @@ function buildReportCommand(): Command {
         }
       }
 
-      current = { title, subtitle: fl.get("subtitle"), sections: [], brand };
-      return ok(JSON.stringify({ created: true, title, brand: !!brand }));
+      const offline = fl.get("offline") === "true";
+      current = { title, subtitle: fl.get("subtitle"), sections: [], brand, offline };
+      return ok(JSON.stringify({ created: true, title, brand: !!brand, offline }));
     }
 
     // ── KPI ───────────────────────────────────────────────
@@ -203,6 +205,7 @@ function buildReportCommand(): Command {
         sections: current.sections,
         brand: current.brand,
         logo: current.brand?.logo,
+        offline: current.offline,
       };
 
       const html = generateHtml(reportData);
@@ -366,6 +369,16 @@ function buildReportCommand(): Command {
       const description = fl.get("description");
       const baseUrl = fl.get("base-url") ?? "";
       const outputDir = fl.get("output") ?? "/site";
+
+      // Field mapping — allows using collections with non-standard field names
+      const fTitle = fl.get("field-title") ?? "Title";
+      const fBody = fl.get("field-body") ?? "Body";
+      const fStatus = fl.get("field-status") ?? "Status";
+      const fAuthor = fl.get("field-author") ?? "Author";
+      const fCategory = fl.get("field-category") ?? "Category";
+      const fTags = fl.get("field-tags") ?? "Tags";
+      const fDate = fl.get("field-date") ?? "PublishedAt";
+      const fSlug = fl.get("field-slug") ?? "slug";
       const statusFilter = fl.get("status") ?? "Published";
 
       // Load brand
@@ -376,12 +389,26 @@ function buildReportCommand(): Command {
       }
 
       // Fetch published posts
-      const filter = JSON.stringify({ Status: statusFilter });
+      const filter = JSON.stringify({ [fStatus]: statusFilter });
       const r = await exec(`db ${collection} find '${filter.replace(/'/g, "'\\''")}'`);
       if (r.exitCode !== 0) return fail(r.exitCode, `cannot read collection '${collection}': ${r.stderr.trim()}`);
 
-      const posts = (JSON.parse(r.stdout) as SitePost[])
-        .sort((a, b) => (b.PublishedAt ?? b.CreatedAt ?? "").localeCompare(a.PublishedAt ?? a.CreatedAt ?? ""));
+      // Map fields to standard SitePost shape
+      const rawDocs = JSON.parse(r.stdout) as Array<Record<string, unknown>>;
+      const posts: SitePost[] = rawDocs.map(d => ({
+        _id: d._id as string,
+        Title: (d[fTitle] as string) ?? "",
+        Body: (d[fBody] as string) ?? "",
+        Author: d[fAuthor] as string | undefined,
+        Status: (d[fStatus] as string) ?? "",
+        Category: d[fCategory] as string | undefined,
+        Tags: d[fTags] as string[] | undefined,
+        PublishedAt: d[fDate] as string | undefined,
+        slug: d[fSlug] as string | undefined,
+        CreatedAt: d.CreatedAt as string | undefined,
+      }));
+
+      posts.sort((a, b) => (b.PublishedAt ?? b.CreatedAt ?? "").localeCompare(a.PublishedAt ?? a.CreatedAt ?? ""));
 
       const config: SiteConfig = { title, description, baseUrl, brand };
 
@@ -403,7 +430,8 @@ function buildReportCommand(): Command {
       return ok(JSON.stringify({
         site: true,
         output: outputDir,
-        pages: posts.length + 1, // posts + index
+        htmlPages: posts.length + 1, // posts + index
+        feeds: 1,
         posts: posts.map(p => p.slug ?? p.Title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")),
         files: [`index.html`, ...posts.map(p => `${p.slug ?? p.Title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.html`), `rss.xml`],
       }));

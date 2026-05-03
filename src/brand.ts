@@ -57,43 +57,94 @@ export function parseBrandFile(content: string): BrandTokens {
 
   const yaml = fmMatch[1];
   const result: Record<string, unknown> = {};
-  // Support up to 3 levels: top → level1 → level2
+  const lines = yaml.split("\n");
+
+  // Two-pass approach:
+  // 1. Parse all lines into (indent, key, value|null) tuples
+  // 2. Build nested structure
+
+  const parsed: Array<{ indent: number; key?: string; value?: string; isSeq?: boolean; seqValue?: string }> = [];
+
+  for (const raw of lines) {
+    const trimEnd = raw.trimEnd();
+    if (trimEnd === "" || trimEnd.trimStart().startsWith("#")) continue;
+    const indent = trimEnd.length - trimEnd.trimStart().length;
+    const trimmed = trimEnd.trimStart();
+
+    // Sequence item: - value
+    const seqMatch = trimmed.match(/^-\s+(.+)$/);
+    if (seqMatch) {
+      parsed.push({ indent, isSeq: true, seqValue: seqMatch[1] });
+      continue;
+    }
+
+    // Key: value (allow no space after colon for compat)
+    const kvMatch = trimmed.match(/^(\S+):\s*(.+)$/);
+    if (kvMatch) {
+      parsed.push({ indent, key: kvMatch[1], value: kvMatch[2] });
+      continue;
+    }
+
+    // Key: (no value — object or array follows)
+    const objMatch = trimmed.match(/^(\S+):\s*$/);
+    if (objMatch) {
+      parsed.push({ indent, key: objMatch[1] });
+    }
+  }
+
+  // Build structure
   let l1Obj: Record<string, unknown> | null = null;
+  let l1Arr: unknown[] | null = null;
   let l2Obj: Record<string, unknown> | null = null;
 
-  for (const line of yaml.split("\n")) {
-    const raw = line.trimEnd();
-    if (raw === "" || raw.trimStart().startsWith("#")) continue;
+  for (let i = 0; i < parsed.length; i++) {
+    const p = parsed[i];
 
-    // Count leading spaces
-    const indent = raw.length - raw.trimStart().length;
-    const trimmed = raw.trimStart();
-
-    // Key: value
-    const kvMatch = trimmed.match(/^(\S+):\s+(.+)$/);
-    // Key: (object start)
-    const objMatch = !kvMatch ? trimmed.match(/^(\S+):\s*$/) : null;
-
-    if (indent === 0) {
-      l1Obj = null;
-      l2Obj = null;
-      if (kvMatch) {
-        result[kvMatch[1]] = parseValue(kvMatch[2]);
-      } else if (objMatch) {
-        l1Obj = {};
-        result[objMatch[1]] = l1Obj;
+    if (p.indent === 0 && p.key) {
+      // Flush
+      l1Obj = null; l1Arr = null; l2Obj = null;
+      if (p.value !== undefined) {
+        result[p.key] = parseValue(p.value);
+      } else {
+        // Peek: is the next line a sequence item?
+        const next = parsed[i + 1];
+        if (next && next.isSeq) {
+          l1Arr = [];
+          result[p.key] = l1Arr;
+        } else {
+          l1Obj = {};
+          result[p.key] = l1Obj;
+        }
       }
-    } else if (indent >= 2 && indent < 4 && l1Obj) {
-      l2Obj = null;
-      if (kvMatch) {
-        l1Obj[kvMatch[1]] = parseValue(kvMatch[2]);
-      } else if (objMatch) {
-        l2Obj = {};
-        l1Obj[objMatch[1]] = l2Obj;
+    } else if (p.indent === 0 && p.isSeq && l1Arr) {
+      l1Arr.push(parseValue(p.seqValue!));
+    } else if (p.indent >= 2 && p.indent < 4) {
+      if (p.isSeq && l1Arr) {
+        l1Arr.push(parseValue(p.seqValue!));
+      } else if (p.key && l1Obj) {
+        l2Obj = null;
+        if (p.value !== undefined) {
+          l1Obj[p.key] = parseValue(p.value);
+        } else {
+          // Peek for array
+          const next = parsed[i + 1];
+          if (next && next.isSeq && next.indent >= 4) {
+            const arr: unknown[] = [];
+            l1Obj[p.key] = arr;
+            // Consume sequence items
+            while (i + 1 < parsed.length && parsed[i + 1].isSeq && parsed[i + 1].indent >= 4) {
+              i++;
+              arr.push(parseValue(parsed[i].seqValue!));
+            }
+          } else {
+            l2Obj = {};
+            l1Obj[p.key] = l2Obj;
+          }
+        }
       }
-    } else if (indent >= 4 && l2Obj) {
-      if (kvMatch) {
-        l2Obj[kvMatch[1]] = parseValue(kvMatch[2]);
+    } else if (p.indent >= 4 && p.key && l2Obj) {
+      if (p.value !== undefined) {
+        l2Obj[p.key] = parseValue(p.value);
       }
     }
   }
