@@ -1,6 +1,6 @@
 {
   "name": "just-bash-report",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Generate self-contained HTML dashboards, invoices, and static sites from agent data. just-bash plugin with pure HTML generators (use without just-bash). Charts, KPIs, tables, brand theming, i18n.",
   "license": "MIT",
   "author": "Mauricio Perera",

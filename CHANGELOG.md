@@ -6,6 +6,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-05-03
+
+### Fixed
+- `createRequire(import.meta.url)` is no longer invoked at module top level.
+  Some runtimes (Cloudflare Workers / workerd) reject the call at import time,
+  which crashed the package even when only the pure HTML generators were
+  imported. Deferred the call into a `getRequire()` helper that runs only the
+  first time `createReportPlugin()` is called. Pure-generator users (the very
+  audience v2.0.0 targets) can now import the package in any runtime that
+  supports ES modules — no Node-specific code paths reached.
+
 ## [2.0.0] - 2026-05-03
 
 ### Changed (BREAKING for plugin users)

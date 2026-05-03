@@ -14,8 +14,12 @@ import { mdToHtml } from "./md.js";
 
 // Lazy runtime loader for the optional peer deps. Uses createRequire so the
 // API stays synchronous (createReportPlugin returns Command[] directly).
+//
+// IMPORTANT: createRequire itself is deferred (not called at module top level)
+// because some runtimes (Cloudflare Workers / workerd) reject createRequire
+// at import time even when import.meta.url is conceptually defined. Pure
+// generators (generateHtml etc) must import without ever invoking node:module.
 import { createRequire } from "node:module";
-const _require = createRequire(import.meta.url);
 
 interface JustBashRuntime {
   defineCommand: (
@@ -28,13 +32,22 @@ interface JustBashDataRuntime {
 }
 
 let _runtime: { jb: JustBashRuntime; jbd: JustBashDataRuntime } | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _require: ((id: string) => any) | null = null;
+
+function getRequire(): (id: string) => unknown {
+  if (_require) return _require;
+  _require = createRequire(import.meta.url);
+  return _require;
+}
 
 function loadRuntime(): { jb: JustBashRuntime; jbd: JustBashDataRuntime } {
   if (_runtime) return _runtime;
+  const req = getRequire();
   let jb: JustBashRuntime;
   let jbd: JustBashDataRuntime;
   try {
-    jb = _require("just-bash") as JustBashRuntime;
+    jb = req("just-bash") as JustBashRuntime;
   } catch (e) {
     throw new Error(
       "createReportPlugin() requires the optional peer dependency 'just-bash'.\n" +
@@ -46,7 +59,7 @@ function loadRuntime(): { jb: JustBashRuntime; jbd: JustBashDataRuntime } {
     );
   }
   try {
-    jbd = _require("just-bash-data") as JustBashDataRuntime;
+    jbd = req("just-bash-data") as JustBashDataRuntime;
   } catch (e) {
     throw new Error(
       "createReportPlugin() requires the optional peer dependency 'just-bash-data'.\n" +
