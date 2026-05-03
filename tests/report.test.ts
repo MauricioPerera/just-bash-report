@@ -336,6 +336,47 @@ describe("edge cases", () => {
   });
 });
 
+// ── Issue #4: slug collisions in reportSite ──────────────
+
+describe("issue #4: reportSite detects slug collisions", () => {
+  it("rejects when two posts slugify to the same value", async () => {
+    await run(`db content insert '{"Title":"Hello World","Body":"first","Status":"Published"}'`);
+    await run(`db content insert '{"Title":"Hello, World!","Body":"second","Status":"Published"}'`);
+    const r = await run(`report site content --output=/site`);
+    expect(r.code).toBe(1);
+    expect(r.err).toContain("slug collisions");
+    expect(r.err).toContain("hello-world");
+    expect(r.err).toContain("Hello World");
+    expect(r.err).toContain("Hello, World!");
+  });
+
+  it("rejects when two posts share an explicit slug", async () => {
+    await run(`db content insert '{"Title":"Post A","Body":"a","Status":"Published","slug":"shared"}'`);
+    await run(`db content insert '{"Title":"Post B","Body":"b","Status":"Published","slug":"shared"}'`);
+    const r = await run(`report site content --output=/site`);
+    expect(r.code).toBe(1);
+    expect(r.err).toContain("shared");
+  });
+
+  it("does not write any files when collision detected", async () => {
+    await run(`db content insert '{"Title":"X","Body":"x","Status":"Published"}'`);
+    await run(`db content insert '{"Title":"x","Body":"y","Status":"Published"}'`);
+    await run(`report site content --output=/sitebad`);
+    const fs = (bash as unknown as { fs: { exists(p: string): Promise<boolean> } }).fs;
+    expect(await fs.exists("/sitebad/index.html")).toBe(false);
+    expect(await fs.exists("/sitebad/x.html")).toBe(false);
+  });
+
+  it("succeeds when slugs are unique", async () => {
+    await run(`db content insert '{"Title":"First Post","Body":"a","Status":"Published"}'`);
+    await run(`db content insert '{"Title":"Second Post","Body":"b","Status":"Published"}'`);
+    const r = await run(`report site content --output=/sitegood`);
+    expect(r.code).toBe(0);
+    const data = json<{ posts: string[] }>(r.out);
+    expect(data.posts.sort()).toEqual(["first-post", "second-post"]);
+  });
+});
+
 // ── Issue #3: reportQuick section content validation ─────
 
 describe("issue #3: reportQuick validates section contents", () => {

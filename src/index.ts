@@ -480,6 +480,30 @@ function buildReportCommand(): Command {
 
       posts.sort((a, b) => (b.PublishedAt ?? b.CreatedAt ?? "").localeCompare(a.PublishedAt ?? a.CreatedAt ?? ""));
 
+      // Pre-compute slugs and detect collisions BEFORE writing anything.
+      // Two posts with titles like "Hello World" and "Hello, World!" both
+      // slugify to "hello-world" and would silently overwrite each other.
+      const slugFor = (p: SitePost): string =>
+        p.slug ?? p.Title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+      const slugMap = new Map<string, string[]>(); // slug → [titles]
+      for (const post of posts) {
+        const slug = slugFor(post);
+        const arr = slugMap.get(slug) ?? [];
+        arr.push(post.Title);
+        slugMap.set(slug, arr);
+      }
+      const collisions = [...slugMap.entries()].filter(([, titles]) => titles.length > 1);
+      if (collisions.length > 0) {
+        const lines = collisions.map(([slug, titles]) =>
+          `  '${slug}' from: ${titles.map(t => JSON.stringify(t)).join(" | ")}`
+        );
+        return fail(1,
+          `slug collisions detected (${collisions.length}):\n${lines.join("\n")}\n` +
+          `Add unique 'slug' field to posts to disambiguate, or rename titles.`
+        );
+      }
+
       const config: SiteConfig = { title, description, baseUrl, brand };
 
       // Generate index
@@ -487,8 +511,10 @@ function buildReportCommand(): Command {
       await ctx.fs.writeFile(`${outputDir}/index.html`, indexHtml);
 
       // Generate individual post pages
+      const slugs: string[] = [];
       for (const post of posts) {
-        const slug = post.slug ?? post.Title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        const slug = slugFor(post);
+        slugs.push(slug);
         const postHtml = generatePostPage(post, config);
         await ctx.fs.writeFile(`${outputDir}/${slug}.html`, postHtml);
       }
@@ -502,8 +528,8 @@ function buildReportCommand(): Command {
         output: outputDir,
         htmlPages: posts.length + 1, // posts + index
         feeds: 1,
-        posts: posts.map(p => p.slug ?? p.Title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")),
-        files: [`index.html`, ...posts.map(p => `${p.slug ?? p.Title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.html`), `rss.xml`],
+        posts: slugs,
+        files: [`index.html`, ...slugs.map(s => `${s}.html`), `rss.xml`],
       }));
     }
 
