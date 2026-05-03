@@ -335,3 +335,76 @@ describe("edge cases", () => {
     expect(json<{ active: boolean }>(r.out).active).toBe(false);
   });
 });
+
+// ── Issue #1: writeFile error handling ────────────────────
+
+describe("issue #1: render/invoice writeFile error handling", () => {
+  it("render to nested non-existent dir succeeds (parent dirs auto-created)", async () => {
+    await run(`report create "T"`);
+    await run(`report kpi "X" 1`);
+    const r = await run(`report render --output=/deep/nested/missing/out.html`);
+    expect(r.code).toBe(0);
+    const html = await bash.readFile("/deep/nested/missing/out.html");
+    expect(html).toContain("T");
+  });
+
+  it("render does NOT leave .keep artifact behind", async () => {
+    await run(`report create "T"`);
+    await run(`report kpi "X" 1`);
+    await run(`report render --output=/nodir/out.html`);
+    const fs = (bash as unknown as { fs: { exists(p: string): Promise<boolean> } }).fs;
+    expect(await fs.exists("/nodir/.keep")).toBe(false);
+    expect(await fs.exists("/nodir/out.html")).toBe(true);
+  });
+
+  it("render returns proper fail() when fs throws and cannot recover", async () => {
+    // Mock a read-only fs that always throws
+    const failingFs = new InMemoryFs({});
+    const orig = failingFs.writeFile.bind(failingFs);
+    let callCount = 0;
+    failingFs.writeFile = async (...args: Parameters<typeof orig>) => {
+      callCount++;
+      throw new Error("EROFS: read-only filesystem");
+    };
+    failingFs.mkdir = async () => { throw new Error("EROFS"); };
+    const failBash = new Bash({
+      fs: failingFs,
+      customCommands: createReportPlugin({ rootDir: "/data" }),
+    });
+    await failBash.exec(`report create "T"`);
+    await failBash.exec(`report kpi "X" 1`);
+    const r = await failBash.exec(`report render --output=/out.html`);
+    expect(r.exitCode).toBe(1);
+    expect(r.stderr).toContain("cannot write");
+    expect(r.stderr).toContain("EROFS");
+  });
+
+  it("invoice to nested dir succeeds", async () => {
+    const r = await run(`report invoice '${JSON.stringify({
+      number: "INV-001",
+      date: "2026-05-03",
+      from: { name: "A" },
+      to: { name: "B" },
+      items: [{ description: "x", quantity: 1, unitPrice: 100 }],
+    })}' --output=/deep/inv/INV-001.html`);
+    expect(r.code).toBe(0);
+    const html = await bash.readFile("/deep/inv/INV-001.html");
+    expect(html).toContain("INV-001");
+  });
+
+  it("invoice returns fail() when fs throws", async () => {
+    const failingFs = new InMemoryFs({});
+    failingFs.writeFile = async () => { throw new Error("ENOSPC: no space"); };
+    failingFs.mkdir = async () => { throw new Error("ENOSPC"); };
+    const failBash = new Bash({
+      fs: failingFs,
+      customCommands: createReportPlugin({ rootDir: "/data" }),
+    });
+    const r = await failBash.exec(`report invoice '${JSON.stringify({
+      number: "X", date: "2026", from: { name: "A" }, to: { name: "B" },
+      items: [{ description: "x", quantity: 1, unitPrice: 1 }],
+    })}' --output=/x.html`);
+    expect(r.exitCode).toBe(1);
+    expect(r.stderr).toContain("cannot write");
+  });
+});

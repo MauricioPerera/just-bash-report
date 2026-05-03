@@ -20,6 +20,36 @@ const fail = (code: number, msg: string): ExecResult => ({ stdout: "", stderr: `
 
 type Exec = (cmd: string) => Promise<ExecResult>;
 
+/**
+ * Write a file, creating parent directories if needed.
+ * Returns null on success, error message on failure.
+ * Never throws — callers can map the result to an ExecResult.
+ */
+async function safeWrite(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fs: any,
+  path: string,
+  content: string,
+): Promise<string | null> {
+  try {
+    await fs.writeFile(path, content);
+    return null;
+  } catch (e) {
+    // Try to create parent dirs explicitly, then retry once.
+    const dir = path.split("/").slice(0, -1).join("/");
+    if (dir && typeof fs.mkdir === "function") {
+      try { await fs.mkdir(dir, { recursive: true }); } catch { /* ignore */ }
+      try {
+        await fs.writeFile(path, content);
+        return null;
+      } catch (err) {
+        return err instanceof Error ? err.message : String(err);
+      }
+    }
+    return e instanceof Error ? e.message : String(e);
+  }
+}
+
 // ── Report state per filesystem (closure, not global) ─────
 
 interface ReportState {
@@ -210,17 +240,8 @@ function buildReportCommand(): Command {
 
       const html = generateHtml(reportData);
 
-      // Ensure directory exists by writing directly
-      try {
-        await ctx.fs.writeFile(output, html);
-      } catch {
-        // Try creating parent dirs by writing
-        const dir = output.split("/").slice(0, -1).join("/");
-        if (dir) {
-          try { await ctx.fs.writeFile(dir + "/.keep", ""); } catch { /* ignore */ }
-          await ctx.fs.writeFile(output, html);
-        }
-      }
+      const writeErr = await safeWrite(ctx.fs, output, html);
+      if (writeErr) return fail(1, `cannot write ${output}: ${writeErr}`);
 
       return ok(JSON.stringify({
         rendered: true,
@@ -460,15 +481,8 @@ function buildReportCommand(): Command {
       const html = generateInvoiceHtml(data);
       const output = fl.get("output") ?? `/invoices/${data.number}.html`;
 
-      try {
-        await ctx.fs.writeFile(output, html);
-      } catch {
-        const dir = output.split("/").slice(0, -1).join("/");
-        if (dir) {
-          try { await ctx.fs.writeFile(dir + "/.keep", ""); } catch { /* ignore */ }
-          await ctx.fs.writeFile(output, html);
-        }
-      }
+      const writeErr = await safeWrite(ctx.fs, output, html);
+      if (writeErr) return fail(1, `cannot write ${output}: ${writeErr}`);
 
       const total = data.items.reduce((s, i) => {
         const line = i.quantity * i.unitPrice;
