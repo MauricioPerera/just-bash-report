@@ -1,0 +1,96 @@
+name: Deploy demos to Pages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'demo-*.html'
+      - 'demo-site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v4
+      - name: Build site
+        run: |
+          mkdir -p _site
+          cp demo-*.html _site/ 2>/dev/null || true
+          if [ -d demo-site ]; then cp -r demo-site _site/demo-site; fi
+          cat > _site/index.html <<'HTML'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <title>just-bash-report demos</title>
+            <style>
+              body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:760px;margin:40px auto;padding:0 24px;color:#1e293b;line-height:1.6}
+              h1{font-size:28px;margin-bottom:8px}
+              .sub{color:#64748b;margin-bottom:32px}
+              ul{list-style:none;padding:0}
+              li{margin:12px 0}
+              a{color:#6366f1;text-decoration:none;font-weight:500}
+              a:hover{text-decoration:underline}
+              .group{margin:24px 0;padding:20px;background:#f8fafc;border-radius:12px}
+              .group h2{font-size:18px;margin-bottom:12px}
+              code{background:#e2e8f0;padding:2px 6px;border-radius:4px;font-size:14px}
+            </style>
+          </head>
+          <body>
+            <h1>just-bash-report — demo gallery</h1>
+            <div class="sub">
+              Live HTML output from the
+              <a href="https://github.com/MauricioPerera/just-bash-report">just-bash-report</a>
+              plugin. Each demo is a single self-contained file.
+            </div>
+            <div class="group">
+              <h2>Dashboards</h2>
+              <ul>
+                <li><a href="demo-auto.html">Auto-generated dashboard</a></li>
+                <li><a href="demo-branded.html">Branded dashboard (BRAND.md)</a></li>
+                <li><a href="demo-no-brand.html">Default theme dashboard</a></li>
+                <li><a href="demo-rrhh.html">HR dashboard</a></li>
+              </ul>
+            </div>
+            <div class="group">
+              <h2>Invoices</h2>
+              <ul>
+                <li><a href="demo-invoice-default.html">Default invoice</a></li>
+                <li><a href="demo-invoice-branded.html">Branded invoice</a></li>
+                <li><a href="demo-invoice-paid.html">Paid invoice</a></li>
+              </ul>
+            </div>
+            <div class="group">
+              <h2>Static site</h2>
+              <ul>
+                <li><a href="demo-site/index.html">Blog index + 3 posts + RSS</a></li>
+              </ul>
+            </div>
+            <div class="group">
+              <h2>Install</h2>
+              <p><code>npm install just-bash-report</code></p>
+            </div>
+          </body>
+          </html>
+          HTML
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
