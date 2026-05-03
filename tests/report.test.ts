@@ -336,6 +336,69 @@ describe("edge cases", () => {
   });
 });
 
+// ── Issue #8: reportSite write error handling + rollback ──
+
+describe("issue #8: reportSite captures writeFile errors and rolls back", () => {
+  it("happy path writes index, posts, rss without error", async () => {
+    await run(`db content insert '{"Title":"A","Body":"a","Status":"Published"}'`);
+    await run(`db content insert '{"Title":"B","Body":"b","Status":"Published"}'`);
+    const r = await run(`report site content --output=/site`);
+    expect(r.code).toBe(0);
+    const fs = (bash as unknown as { fs: { exists(p: string): Promise<boolean> } }).fs;
+    expect(await fs.exists("/site/index.html")).toBe(true);
+    expect(await fs.exists("/site/a.html")).toBe(true);
+    expect(await fs.exists("/site/b.html")).toBe(true);
+    expect(await fs.exists("/site/rss.xml")).toBe(true);
+  });
+
+  it("returns fail(1) with helpful message when writeFile throws on first post", async () => {
+    const failingFs = new InMemoryFs({});
+    const realWrite = failingFs.writeFile.bind(failingFs);
+    let count = 0;
+    failingFs.writeFile = async (path: string, content: string | Uint8Array, opts?: unknown) => {
+      count++;
+      // index.html ok, then fail on first post
+      if (count >= 2 && typeof path === "string" && path.endsWith(".html") && !path.endsWith("index.html")) {
+        throw new Error("ENOSPC: simulated disk full");
+      }
+      return realWrite(path, content, opts as never);
+    };
+    failingFs.mkdir = async () => { /* allow */ };
+    const failBash = new Bash({
+      fs: failingFs,
+      customCommands: createReportPlugin({ rootDir: "/data" }),
+    });
+    await failBash.exec(`db content insert '{"Title":"A","Body":"a","Status":"Published"}'`);
+    await failBash.exec(`db content insert '{"Title":"B","Body":"b","Status":"Published"}'`);
+    const r = await failBash.exec(`report site content --output=/site`);
+    expect(r.exitCode).toBe(1);
+    expect(r.stderr).toContain("cannot write");
+    expect(r.stderr).toContain("ENOSPC");
+    expect(r.stderr).toContain("Rolled back");
+  });
+
+  it("rollback removes the index.html that was already written", async () => {
+    const failingFs = new InMemoryFs({});
+    const realWrite = failingFs.writeFile.bind(failingFs);
+    failingFs.writeFile = async (path: string, content: string | Uint8Array, opts?: unknown) => {
+      if (typeof path === "string" && path.endsWith(".html") && !path.endsWith("index.html")) {
+        throw new Error("EROFS");
+      }
+      return realWrite(path, content, opts as never);
+    };
+    failingFs.mkdir = async () => { /* allow */ };
+    const failBash = new Bash({
+      fs: failingFs,
+      customCommands: createReportPlugin({ rootDir: "/data" }),
+    });
+    await failBash.exec(`db content insert '{"Title":"A","Body":"a","Status":"Published"}'`);
+    const r = await failBash.exec(`report site content --output=/site`);
+    expect(r.exitCode).toBe(1);
+    // After rollback, index.html should be gone
+    expect(await failingFs.exists("/site/index.html")).toBe(false);
+  });
+});
+
 // ── Issue #7: --offline honored in invoice and site ──────
 
 const FONT_BRAND = `---

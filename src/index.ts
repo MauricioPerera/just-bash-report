@@ -522,22 +522,55 @@ function buildReportCommand(defaultLocale?: Locale): Command {
       const offline = fl.get("offline") === "true";
       const config: SiteConfig = { title, description, baseUrl, brand, locale, offline };
 
+      // Track every successful write so we can roll back on partial failure.
+      // Without this, a writeFile error mid-loop leaves a half-published site
+      // (some posts present, others missing, RSS pointing to gaps).
+      const written: string[] = [];
+      const tryWrite = async (path: string, content: string): Promise<string | null> => {
+        const err = await safeWrite(ctx.fs, path, content);
+        if (err === null) written.push(path);
+        return err;
+      };
+      const rollback = async (): Promise<number> => {
+        let removed = 0;
+        for (const f of written) {
+          try {
+            // Optional rm — fall back gracefully if fs doesn't support it
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const fs = ctx.fs as any;
+            if (typeof fs.rm === "function") await fs.rm(f);
+            else if (typeof fs.unlink === "function") await fs.unlink(f);
+            removed++;
+          } catch { /* best effort */ }
+        }
+        return removed;
+      };
+
       // Generate index
       const indexHtml = generateIndex(posts, config);
-      await ctx.fs.writeFile(`${outputDir}/index.html`, indexHtml);
+      const indexErr = await tryWrite(`${outputDir}/index.html`, indexHtml);
+      if (indexErr) return fail(1, `cannot write index.html: ${indexErr}`);
 
       // Generate individual post pages
       const slugs: string[] = [];
       for (const post of posts) {
         const slug = slugFor(post);
-        slugs.push(slug);
         const postHtml = generatePostPage(post, config);
-        await ctx.fs.writeFile(`${outputDir}/${slug}.html`, postHtml);
+        const err = await tryWrite(`${outputDir}/${slug}.html`, postHtml);
+        if (err) {
+          const removed = await rollback();
+          return fail(1, `cannot write ${slug}.html: ${err}\nRolled back ${removed} file(s) to avoid a partially-published site.`);
+        }
+        slugs.push(slug);
       }
 
       // Generate RSS
       const rss = generateRss(posts, config);
-      await ctx.fs.writeFile(`${outputDir}/rss.xml`, rss);
+      const rssErr = await tryWrite(`${outputDir}/rss.xml`, rss);
+      if (rssErr) {
+        const removed = await rollback();
+        return fail(1, `cannot write rss.xml: ${rssErr}\nRolled back ${removed} file(s).`);
+      }
 
       return ok(JSON.stringify({
         site: true,
