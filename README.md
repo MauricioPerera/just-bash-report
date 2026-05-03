@@ -1,8 +1,11 @@
 # just-bash-report
 
 [![npm](https://img.shields.io/npm/v/just-bash-report)](https://www.npmjs.com/package/just-bash-report)
+[![demos](https://img.shields.io/badge/demos-live-6366f1)](https://mauricioperera.github.io/just-bash-report/)
 
 A [just-bash](https://github.com/vercel-labs/just-bash) plugin that generates self-contained HTML dashboards, invoices, and static sites from agent data. The LLM agent does the work — humans just open the file.
+
+**[→ See live demos](https://mauricioperera.github.io/just-bash-report/)** (dashboards, invoices, static site).
 
 Built on [just-bash-data](https://github.com/MauricioPerera/just-bash-data) for the storage layer.
 
