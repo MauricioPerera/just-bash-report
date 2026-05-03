@@ -6,6 +6,38 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-05-03
+
+### Changed (BREAKING for plugin users)
+- `just-bash` and `just-bash-data` moved from `dependencies` / `peerDependencies`
+  to `peerDependencies` with `peerDependenciesMeta.optional`. Plugin users now
+  need to install both explicitly:
+
+  ```bash
+  npm install just-bash-report just-bash just-bash-data
+  ```
+
+  Pure-generator users (only calling `generateHtml`, `generateInvoiceHtml`,
+  `generateIndex`, `generatePostPage`, `generateRss`, `parseBrandFile`,
+  `mdToHtml`, `getStrings`) install only `just-bash-report` and skip the
+  ~3 transitive deps that previously came along.
+
+### Added
+- Lazy runtime loader: `createReportPlugin()` defers loading of the optional
+  peer deps to first call via `createRequire`. The package can be imported
+  and the pure generators used without the peers installed.
+- Helpful error when `createReportPlugin()` is called without the peers:
+  the message names the missing module, gives the exact `npm install`
+  command, and points at the pure-generator path as an alternative.
+- Test file `tests/optional-deps.test.ts` (6 tests) verifying that pure
+  generators work with mocked-missing peers and that the error path
+  produces an actionable message.
+
+### Internal
+- `tsup.config.ts` marks `just-bash` and `just-bash-data` as `external` so
+  they are never bundled into `dist/`.
+- Top-level imports of those modules converted to type-only.
+
 ## [1.3.0] - 2026-05-03
 
 ### Added

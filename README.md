@@ -11,9 +11,17 @@ Built on [just-bash-data](https://github.com/MauricioPerera/just-bash-data) for 
 
 ## Install
 
+Two install paths depending on what you want:
+
 ```bash
+# Pure HTML generators only (no just-bash)
 npm install just-bash-report
+
+# Full plugin (LLM agent driving via bash commands)
+npm install just-bash-report just-bash just-bash-data
 ```
+
+`just-bash` and `just-bash-data` are **optional peer dependencies** since v2.0.0. If you only call `generateHtml`, `generateInvoiceHtml`, `generateIndex`, `generatePostPage`, `generateRss`, `parseBrandFile`, `mdToHtml`, or `getStrings`, you don't need them. Calling `createReportPlugin()` without them throws an error with the exact install command.
 
 ## Quick Start
 

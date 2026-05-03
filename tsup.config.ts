@@ -7,4 +7,7 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   target: "node22",
+  // Optional peer dependencies — never bundle them. Loaded lazily at runtime
+  // via createRequire when createReportPlugin() is called.
+  external: ["just-bash", "just-bash-data"],
 });

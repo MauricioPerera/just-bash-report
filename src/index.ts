@@ -1,12 +1,62 @@
-import { defineCommand, type Command } from "just-bash";
-import { createDataPlugin, type PluginOptions } from "just-bash-data";
-import type { ExecResult } from "just-bash";
+// Type-only imports — these never load the runtime modules. The package
+// can be imported and pure generators used without 'just-bash' or
+// 'just-bash-data' installed.
+import type { Command, CommandContext, ExecResult } from "just-bash";
+import type { PluginOptions } from "just-bash-data";
+
+// Pure generators and helpers — internal modules with zero peer deps.
 import { generateHtml, type Section, type ReportData, type KpiSection, type ChartSection, type TableSection, type TextSection } from "./template.js";
 import { parseBrandFile, brandToCssVars, type BrandTokens } from "./brand.js";
 import { generateInvoiceHtml, type InvoiceData, type InvoiceItem, type InvoiceParty } from "./invoice.js";
 import { generateIndex, generatePostPage, generateRss, type SitePost, type SiteConfig } from "./site.js";
 import { getStrings, type Locale, type Strings } from "./i18n.js";
 import { mdToHtml } from "./md.js";
+
+// Lazy runtime loader for the optional peer deps. Uses createRequire so the
+// API stays synchronous (createReportPlugin returns Command[] directly).
+import { createRequire } from "node:module";
+const _require = createRequire(import.meta.url);
+
+interface JustBashRuntime {
+  defineCommand: (
+    name: string,
+    execute: (args: string[], ctx: CommandContext) => Promise<ExecResult>
+  ) => Command;
+}
+interface JustBashDataRuntime {
+  createDataPlugin: (opts: PluginOptions) => Command[];
+}
+
+let _runtime: { jb: JustBashRuntime; jbd: JustBashDataRuntime } | null = null;
+
+function loadRuntime(): { jb: JustBashRuntime; jbd: JustBashDataRuntime } {
+  if (_runtime) return _runtime;
+  let jb: JustBashRuntime;
+  let jbd: JustBashDataRuntime;
+  try {
+    jb = _require("just-bash") as JustBashRuntime;
+  } catch (e) {
+    throw new Error(
+      "createReportPlugin() requires the optional peer dependency 'just-bash'.\n" +
+      "Install it with: npm install just-bash just-bash-data\n" +
+      "If you only need the pure HTML generators (generateHtml, generateInvoiceHtml, " +
+      "generateIndex, generatePostPage, generateRss), import them directly without " +
+      "calling createReportPlugin.\n" +
+      `Underlying error: ${e instanceof Error ? e.message : String(e)}`
+    );
+  }
+  try {
+    jbd = _require("just-bash-data") as JustBashDataRuntime;
+  } catch (e) {
+    throw new Error(
+      "createReportPlugin() requires the optional peer dependency 'just-bash-data'.\n" +
+      "Install it with: npm install just-bash-data\n" +
+      `Underlying error: ${e instanceof Error ? e.message : String(e)}`
+    );
+  }
+  _runtime = { jb, jbd };
+  return _runtime;
+}
 
 // ── Public types ──────────────────────────────────────────
 
@@ -114,7 +164,7 @@ interface ReportState {
   locale?: Locale;
 }
 
-function buildReportCommand(defaultLocale?: Locale): Command {
+function buildReportCommand(defaultLocale: Locale | undefined, defineCommand: JustBashRuntime["defineCommand"]): Command {
   // Per-id report state. The default id is "default", so callers that don't
   // pass --id keep the original single-report-per-plugin behavior. Multiple
   // concurrent reports within one Bash instance can be built by passing
@@ -667,12 +717,16 @@ function buildReportCommand(defaultLocale?: Locale): Command {
 // ── Plugin Factory ────────────────────────────────────────
 
 export function createReportPlugin(opts: ReportOptions = {}): Command[] {
-  const dataPlugin = createDataPlugin({
+  // Lazy-load 'just-bash' and 'just-bash-data'. Throws a helpful error
+  // listing the install command if either is missing.
+  const { jb, jbd } = loadRuntime();
+
+  const dataPlugin = jbd.createDataPlugin({
     rootDir: opts.rootDir ?? "/data",
     encryptionKey: opts.encryptionKey,
     authSecret: opts.authSecret,
     salt: opts.salt,
   });
 
-  return [...dataPlugin, buildReportCommand(opts.locale)] as Command[];
+  return [...dataPlugin, buildReportCommand(opts.locale, jb.defineCommand)] as Command[];
 }
