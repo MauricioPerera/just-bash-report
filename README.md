@@ -34,7 +34,44 @@ await bash.exec(`report render --output=/reports/monthly.html`);
 
 The output is a single HTML file with charts (Chart.js), sortable tables, KPI cards, and markdown sections. Opens in any browser, prints to PDF.
 
-**Note on dependencies:** By default, reports load Chart.js from CDN and custom fonts from Google Fonts. Use `--offline` to inline Chart.js (~200KB) and skip external fonts for fully self-contained files that work without internet.
+**Note on dependencies:** By default, reports load Chart.js from CDN and custom fonts from Google Fonts. Use `--offline` to inline Chart.js (~200 KB) and skip external fonts for fully self-contained files that work without internet. `--offline` is also accepted by `report invoice` and `report site`.
+
+## Use without just-bash
+
+The HTML generators are pure functions and exported from the package entry. You can use them directly with any data source — no `Bash` instance, no virtual filesystem, no plugin layer:
+
+```typescript
+import { generateHtml } from "just-bash-report";
+import { writeFileSync } from "fs";
+
+const html = generateHtml({
+  title: "Q1 Report",
+  generated: new Date().toISOString(),
+  sections: [
+    { kind: "kpi", label: "Revenue", value: 125000 },
+    { kind: "chart", type: "pie", title: "By Dept", labels: ["Sales", "Tech"], values: [60, 40] },
+  ],
+});
+writeFileSync("report.html", html);
+```
+
+All four generators are exported the same way:
+
+```typescript
+import {
+  generateHtml,         // dashboards
+  generateInvoiceHtml,  // invoices
+  generateIndex,        // site index page
+  generatePostPage,     // site post page
+  generateRss,          // site RSS feed
+  parseBrandFile,       // BRAND.md → BrandTokens
+  brandToCssVars,       // BrandTokens → CSS custom properties string
+  mdToHtml,             // minimal markdown → HTML
+  getStrings,           // i18n dictionary lookup
+} from "just-bash-report";
+```
+
+Use the plugin (`createReportPlugin`) when you want LLM agents to drive report construction via bash commands. Use the generators directly when your code already has the data shape and just needs HTML out.
 
 ## Brand Theming
 
@@ -72,26 +109,41 @@ Then pass `--brand=/path/to/BRAND.md` to any command. Colors, fonts, and logo ar
 
 ```bash
 # Start a new report
-report create "Report Title" [--subtitle=...] [--brand=/path/to/BRAND.md] [--offline]
+report create "Report Title" [--subtitle=...] [--brand=/path/to/BRAND.md] [--offline] [--locale=en|es] [--id=<name>]
 
 # Add KPI cards
-report kpi "Label" <value> [--trend=+12%] [--color=#hex]
+report kpi "Label" <value> [--trend=+12%] [--color=#hex] [--id=<name>]
 
 # Add charts (Chart.js)
-report chart <pie|bar|line|doughnut> '{"labels":[...],"values":[...],"title":"..."}'
+report chart <pie|bar|line|doughnut> '{"labels":[...],"values":[...],"title":"..."}' [--id=<name>]
 
 # Add a table from a db collection
-report table <collection> [--title=...] [--columns=col1,col2] [--limit=N]
+report table <collection> [--title=...] [--columns=col1,col2] [--limit=N] [--id=<name>]
 
 # Add markdown text section
-report text "<markdown>"
+report text "<markdown>" [--id=<name>]
 
 # Generate the HTML file
-report render --output=/reports/output.html
+report render --output=/reports/output.html [--id=<name>]
 
 # Check what's in the report so far
-report status
+report status [--id=<name>]
 ```
+
+### Building multiple reports in parallel (`--id`)
+
+Without `--id`, all `report` commands share a single state slot inside the plugin instance. To build several reports concurrently within the same `Bash`, give each one a distinct id:
+
+```bash
+report create "Sales Q1" --id=sales
+report create "Engineering Q1" --id=eng
+report kpi "Revenue" 125000 --id=sales
+report kpi "Deploys" 412 --id=eng
+report render --id=sales --output=/sales.html
+report render --id=eng --output=/eng.html
+```
+
+Omitting `--id` uses the `"default"` bucket — backwards-compatible. `report status` without `--id` shows whether the default bucket is active and lists any other ids in use.
 
 ### One-Shot Modes
 
@@ -112,7 +164,7 @@ report quick '{"title":"...","sections":[{"kind":"kpi",...},{"kind":"chart",...}
 ### Invoice Generator
 
 ```bash
-report invoice '<json>' [--brand=...] [--output=...]
+report invoice '<json>' [--brand=...] [--output=...] [--locale=en|es] [--offline]
 ```
 
 Invoice JSON:
@@ -140,7 +192,7 @@ Generates a print-ready invoice with line items, tax calculation, totals, status
 ### Static Site Generator
 
 ```bash
-report site <collection> [--title=...] [--description=...] [--brand=...] [--output=/site] [--base-url=...] [--status=Published]
+report site <collection> [--title=...] [--description=...] [--brand=...] [--output=/site] [--base-url=...] [--status=Published] [--locale=en|es] [--offline]
 ```
 
 Reads posts from a `db` collection (compatible with js-doc-store's `content` template) and generates:
@@ -153,6 +205,27 @@ Posts are filtered by `Status` field (default: `"Published"`). Draft posts are e
 **Expected fields:** `Title`, `Body`, `Status`, `Author`, `Category`, `Tags`, `PublishedAt`, `slug` (auto-generated from title if missing).
 
 **Custom field names:** Use `--field-title=nombre`, `--field-body=contenido`, `--field-status=estado`, etc. to map collection fields that don't match the defaults. All 8 fields are mappable: `--field-title`, `--field-body`, `--field-status`, `--field-author`, `--field-category`, `--field-tags`, `--field-date`, `--field-slug`.
+
+## Localization (`--locale`)
+
+Rendered output strings (search placeholder, table footer, dashboard footer, invoice labels, status badges, "Back to home" link, the `<html lang>` attribute, the RFC/Tax ID label, and labels derived by `report auto`) are localized.
+
+Default locale is **`es`** to preserve v1.x behavior. To switch:
+
+```bash
+# Per-call
+report create "Q1 Report" --locale=en
+report invoice '...' --locale=en
+report site content --locale=en
+
+# Per-plugin (becomes the default for every command)
+createReportPlugin({ rootDir: "/data", locale: "en" })
+
+# Per-invoice JSON spec (highest precedence)
+{ "number": "INV-001", "locale": "en", ... }
+```
+
+Supported locales today: `en`, `es`. Adding a new one is a single dict entry in [`src/i18n.ts`](src/i18n.ts).
 
 ## Architecture
 
@@ -179,6 +252,7 @@ import type {
   Section, KpiSection, ChartSection, TableSection, TextSection,
   ReportData, InvoiceData, InvoiceItem, InvoiceParty,
   SitePost, SiteConfig, BrandTokens,
+  Locale, Strings,
 } from "just-bash-report";
 ```
 
@@ -194,7 +268,11 @@ import type {
 
 ## Concurrency
 
-Report state lives in a per-command closure. Single-writer only — concurrent `report create` + `report kpi` calls from different contexts will interfere. Each `Bash` instance gets its own report state, so multiple instances are safe.
+Report state is held in a `Map<id, ReportState>` per call to `createReportPlugin()`. Calls without `--id` share the `"default"` slot — a single sequence of `report create / kpi / chart / render` is safe.
+
+To build several reports in parallel within the same `Bash` instance, give each one a distinct `--id` (see [Building multiple reports in parallel](#building-multiple-reports-in-parallel---id)).
+
+Two separate `Bash` instances each get their own plugin state and are fully isolated. Note that if you cache the result of `createReportPlugin()` and pass it to multiple `Bash` instances, those instances will share state via the closure — call `createReportPlugin()` once per `Bash` for full isolation.
 
 ## License
 
