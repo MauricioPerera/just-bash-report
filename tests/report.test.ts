@@ -336,6 +336,64 @@ describe("edge cases", () => {
   });
 });
 
+// ── Issue #3: reportQuick section content validation ─────
+
+describe("issue #3: reportQuick validates section contents", () => {
+  it("rejects chart without labels/values with clear message", async () => {
+    const r = await run(`report quick '${JSON.stringify({
+      title: "T", sections: [{ kind: "chart", type: "pie", title: "Bad" }],
+    })}' --output=/o.html`);
+    expect(r.code).toBe(2);
+    expect(r.err.toLowerCase()).toContain("chart");
+    expect(r.err).toContain("labels");
+  });
+
+  it("rejects chart with mismatched labels/values length", async () => {
+    const r = await run(`report quick '${JSON.stringify({
+      title: "T", sections: [{ kind: "chart", type: "pie", labels: ["a", "b"], values: [1] }],
+    })}' --output=/o.html`);
+    expect(r.code).toBe(2);
+    expect(r.err).toContain("labels.length");
+  });
+
+  it("rejects kpi without label/value", async () => {
+    const r = await run(`report quick '${JSON.stringify({
+      title: "T", sections: [{ kind: "kpi" }],
+    })}' --output=/o.html`);
+    expect(r.code).toBe(2);
+    expect(r.err.toLowerCase()).toContain("kpi");
+  });
+
+  it("rejects table without columns/rows", async () => {
+    const r = await run(`report quick '${JSON.stringify({
+      title: "T", sections: [{ kind: "table", title: "x" }],
+    })}' --output=/o.html`);
+    expect(r.code).toBe(2);
+    expect(r.err.toLowerCase()).toContain("table");
+  });
+
+  it("rejects text without content string", async () => {
+    const r = await run(`report quick '${JSON.stringify({
+      title: "T", sections: [{ kind: "text" }],
+    })}' --output=/o.html`);
+    expect(r.code).toBe(2);
+    expect(r.err.toLowerCase()).toContain("text");
+  });
+
+  it("accepts valid spec with all four kinds", async () => {
+    const r = await run(`report quick '${JSON.stringify({
+      title: "Mixed",
+      sections: [
+        { kind: "kpi", label: "K", value: 1 },
+        { kind: "chart", type: "pie", title: "C", labels: ["a"], values: [1] },
+        { kind: "table", title: "T", columns: ["x"], rows: [{ x: 1 }] },
+        { kind: "text", content: "hi" },
+      ],
+    })}' --output=/mixed.html`);
+    expect(r.code).toBe(0);
+  });
+});
+
 // ── Issue #2: report state namespaced by --id ─────────────
 
 describe("issue #2: multiple reports via --id", () => {

@@ -20,6 +20,45 @@ const fail = (code: number, msg: string): ExecResult => ({ stdout: "", stderr: `
 
 type Exec = (cmd: string) => Promise<ExecResult>;
 
+const VALID_SECTION_KINDS = new Set(["kpi", "chart", "table", "text"]);
+
+/**
+ * Validate a single Section by kind. Returns null if valid, error message
+ * otherwise. Used by reportQuick to fail fast with actionable errors instead
+ * of crashing later inside generateHtml.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function validateSection(s: any, i: number): string | null {
+  if (!s || typeof s !== "object" || !("kind" in s)) {
+    return `section[${i}]: must have 'kind' field`;
+  }
+  const kind = s.kind;
+  if (!VALID_SECTION_KINDS.has(kind)) {
+    return `section[${i}]: unknown kind '${kind}' (valid: kpi, chart, table, text)`;
+  }
+  if (kind === "kpi") {
+    if (!s.label || s.value === undefined) {
+      return `section[${i}] kpi: requires 'label' and 'value'`;
+    }
+  } else if (kind === "chart") {
+    if (!s.type || !Array.isArray(s.labels) || !Array.isArray(s.values)) {
+      return `section[${i}] chart: requires 'type', 'labels'[], 'values'[]`;
+    }
+    if (s.labels.length !== s.values.length) {
+      return `section[${i}] chart: labels.length (${s.labels.length}) !== values.length (${s.values.length})`;
+    }
+  } else if (kind === "table") {
+    if (!Array.isArray(s.columns) || !Array.isArray(s.rows)) {
+      return `section[${i}] table: requires 'columns'[] and 'rows'[]`;
+    }
+  } else if (kind === "text") {
+    if (typeof s.content !== "string") {
+      return `section[${i}] text: requires 'content' string`;
+    }
+  }
+  return null;
+}
+
 /**
  * Write a file, creating parent directories if needed.
  * Returns null on success, error message on failure.
@@ -382,15 +421,9 @@ function buildReportCommand(): Command {
 
       if (!spec.title || !spec.sections) return fail(2, "json must have 'title' and 'sections'");
 
-      const validKinds = new Set(["kpi", "chart", "table", "text"]);
       for (let i = 0; i < spec.sections.length; i++) {
-        const s = spec.sections[i];
-        if (!s || typeof s !== "object" || !("kind" in s)) {
-          return fail(2, `section[${i}]: must have 'kind' field`);
-        }
-        if (!validKinds.has((s as { kind: string }).kind)) {
-          return fail(2, `section[${i}]: unknown kind '${(s as { kind: string }).kind}' (valid: kpi, chart, table, text)`);
-        }
+        const err = validateSection(spec.sections[i], i);
+        if (err) return fail(2, err);
       }
 
       const id = getId(fl);
