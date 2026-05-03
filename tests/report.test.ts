@@ -336,6 +336,71 @@ describe("edge cases", () => {
   });
 });
 
+// ── Issue #10: pure generate* functions exported from main ──
+
+describe("issue #10: generate* exported for use without just-bash", () => {
+  it("generateHtml works standalone", async () => {
+    const { generateHtml } = await import("../src/index.js");
+    const html = generateHtml({
+      title: "Q1 Report",
+      generated: "2026-05-03 12:00:00",
+      sections: [
+        { kind: "kpi", label: "Revenue", value: 125000 },
+        { kind: "chart", type: "pie", title: "By Dept", labels: ["Sales", "Tech"], values: [60, 40] },
+      ],
+    });
+    expect(html).toContain("<!DOCTYPE html>");
+    expect(html).toContain("Q1 Report");
+    expect(html).toContain("125000");
+    expect(html).toContain("By Dept");
+  });
+
+  it("generateInvoiceHtml works standalone", async () => {
+    const { generateInvoiceHtml } = await import("../src/index.js");
+    const html = generateInvoiceHtml({
+      number: "INV-X",
+      date: "2026-01-01",
+      from: { name: "Vendor" },
+      to: { name: "Client" },
+      items: [{ description: "service", quantity: 2, unitPrice: 50 }],
+      locale: "en",
+    });
+    expect(html).toContain("INV-X");
+    expect(html).toContain("INVOICE");
+  });
+
+  it("generateIndex / generatePostPage / generateRss work standalone", async () => {
+    const { generateIndex, generatePostPage, generateRss } = await import("../src/index.js");
+    const post = {
+      _id: "1", Title: "Hello", Body: "world", Status: "Published",
+      slug: "hello", PublishedAt: "2026-01-01",
+    };
+    const cfg = { title: "Blog", baseUrl: "https://x.com" };
+    expect(generateIndex([post], cfg)).toContain("Hello");
+    expect(generatePostPage(post, cfg)).toContain("world");
+    expect(generateRss([post], cfg)).toContain("<rss");
+  });
+
+  it("parseBrandFile and brandToCssVars are exported", async () => {
+    const { parseBrandFile, brandToCssVars } = await import("../src/index.js");
+    const tokens = parseBrandFile(BRAND);
+    expect(tokens.colors.primary).toBe("#1a1a2e");
+    const css = brandToCssVars(tokens);
+    expect(css).toContain("--accent:#1a1a2e");
+  });
+
+  it("getStrings and Locale type exported", async () => {
+    const { getStrings } = await import("../src/index.js");
+    expect(getStrings("en").searchPlaceholder).toBe("Search...");
+    expect(getStrings("es").searchPlaceholder).toBe("Buscar...");
+  });
+
+  it("mdToHtml exported", async () => {
+    const { mdToHtml } = await import("../src/index.js");
+    expect(mdToHtml("# Hi")).toContain("<h1>Hi</h1>");
+  });
+});
+
 // ── Issue #8: reportSite write error handling + rollback ──
 
 describe("issue #8: reportSite captures writeFile errors and rolls back", () => {

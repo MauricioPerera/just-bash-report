@@ -2,14 +2,24 @@ import { defineCommand, type Command } from "just-bash";
 import { createDataPlugin, type PluginOptions } from "just-bash-data";
 import type { ExecResult } from "just-bash";
 import { generateHtml, type Section, type ReportData, type KpiSection, type ChartSection, type TableSection, type TextSection } from "./template.js";
-import { parseBrandFile, type BrandTokens } from "./brand.js";
+import { parseBrandFile, brandToCssVars, type BrandTokens } from "./brand.js";
 import { generateInvoiceHtml, type InvoiceData, type InvoiceItem, type InvoiceParty } from "./invoice.js";
 import { generateIndex, generatePostPage, generateRss, type SitePost, type SiteConfig } from "./site.js";
-import { getStrings, type Locale } from "./i18n.js";
+import { getStrings, type Locale, type Strings } from "./i18n.js";
+import { mdToHtml } from "./md.js";
 
 // ── Public types ──────────────────────────────────────────
 
-export type { Section, ReportData, KpiSection, ChartSection, TableSection, TextSection, BrandTokens, InvoiceData, InvoiceItem, InvoiceParty, SitePost, SiteConfig, Locale };
+export type { Section, ReportData, KpiSection, ChartSection, TableSection, TextSection, BrandTokens, InvoiceData, InvoiceItem, InvoiceParty, SitePost, SiteConfig, Locale, Strings };
+
+// ── Pure HTML generators (use without just-bash) ──────────
+// These are the same functions the plugin uses internally. Import them
+// directly when you have data in memory and want HTML out, without going
+// through the bash command layer or just-bash at all.
+export { generateHtml, generateInvoiceHtml, generateIndex, generatePostPage, generateRss };
+export { parseBrandFile, brandToCssVars };
+export { getStrings };
+export { mdToHtml };
 
 export interface ReportOptions extends PluginOptions {
   /** Default locale for rendered output (default: "es"). Override per command with --locale. */
