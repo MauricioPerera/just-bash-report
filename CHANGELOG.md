@@ -6,7 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-05-03
+
 ### Added
+- Pure HTML generators (`generateHtml`, `generateInvoiceHtml`, `generateIndex`,
+  `generatePostPage`, `generateRss`, `parseBrandFile`, `brandToCssVars`,
+  `mdToHtml`, `getStrings`) re-exported from the package entry. Use the
+  package as a pure HTML library without `just-bash` (issue #10).
 - `--id` flag on every `report` subcommand to namespace report state. Multiple
   concurrent reports can now be built within the same `Bash` instance without
   interfering. Backwards-compatible: omitting `--id` uses the `"default"`
@@ -20,6 +26,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   only `report create` for dashboards). When set with custom brand fonts,
   the Google Fonts `<link>` is replaced with an HTML comment and pages fall
   back to system fonts (issue #7).
+- `CHANGELOG.md` following Keep a Changelog (issue #9).
+- `release.yml` workflow publishes to npm with provenance on `v*` tags
+  (issue #12).
+- `pages.yml` workflow deploys live demos to
+  https://mauricioperera.github.io/just-bash-report/ (issue #12).
+- New keywords on `package.json`: `invoice`, `html-invoice`,
+  `static-site-generator`, `ssg`, `rss` (issue #11).
 
 ### Fixed
 - `reportRender` and `reportInvoice` no longer use the `.keep` mkdir hack with
@@ -47,6 +60,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 - `reportSite` factored the slugify expression (previously duplicated three
   times) into a single local `slugFor()` helper.
+- Description unified across `package.json`, GitHub repo, and README to
+  surface invoice and site generators on first impression (issue #11).
+- README rewritten with new "Use without just-bash" section, `--id`,
+  `--locale`, `--offline` documentation, updated concurrency model.
+
+### Tests
+- Test suite grew from 25 to 67 tests covering all twelve fixes.
 
 ## [1.2.1] - 2026-05-02
 
